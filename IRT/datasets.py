@@ -142,57 +142,13 @@ class Basic_Dataset(Dataset):
         return "basic_dataset"
 
     def get_X(self):
-        n = 20 # "Anzahl Studenten"
-        m = 5 # "Anzahl Aufgaben"
-        X = np.reshape(random.choices([-1, 1], k=m*n), (m, n))
+        # "Anzahl Studenten"
+        n = 50
+        # "Anzahl Aufgaben"
+        m = 20
+        X = np.reshape(random.choices([-1, 1], k=m*n, weights=(0.4, 0.6)), (m, n))
         return X
 
     def load_X_y(self):
         pass
-
-    def get_beta_opt(self):
-        X = self.get_X()
-        n = X.shape[1]
-        m = X.shape[0]
-
-        theta = np.zeros(X.shape[1])
-        Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
-        Beta = np.vstack((np.ones(X.shape[0]), np.zeros(X.shape[0]))).T
-
-        sumCostOld = math.inf
-        logger.info("Computing IRT...")
-        for iteration in range(500):
-            sumCost = 0
-
-            updated_param = np.zeros(m * 2).reshape(m, 2)
-            for i in range(m):
-                Z = make_Z(Alpha, X[i, :])
-                opt = optimizer.optimize(Z)
-                updated_param[i, ] = opt.x
-                sumCost += opt.fun
-            Beta = updated_param
-
-            updated_param = np.zeros(n * 2).reshape(n, 2)
-            for i in range(n):
-                Z = make_Z(Beta, X[:, i])
-                opt = optimizer.optimize(Z)
-                updated_param[i, ] = opt.x
-                sumCost += opt.fun
-            # Alpha has fixed -1 in second column
-            updated_param[:, 1] = -1
-            Alpha = updated_param
-
-            logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
-            if sumCostOld - sumCost < 0.0001:
-                break
-            sumCostOld = sumCost
-
-        df = pd.DataFrame(Alpha)
-        df.to_csv(settings.RESULTS_DIR / f"{self.get_name()}_Alpha.csv", header=False, index=False)
-        df = pd.DataFrame(Beta)
-        df.to_csv(settings.RESULTS_DIR / f"{self.get_name()}_Beta.csv", header=False, index=False)
-        df = pd.DataFrame(X)
-        df.to_csv(settings.RESULTS_DIR / f"{self.get_name()}_data.csv", header=False, index=False)
-
-        return Alpha, Beta
 

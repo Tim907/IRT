@@ -4,7 +4,7 @@ from . import settings
 from . import optimizer
 from .datasets import Dataset
 from .experiments import (
-    IRTExperiment,
+    L2SExperiment,
 )
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -16,12 +16,12 @@ def run_experiments(dataset: Dataset, num_runs, add=False):
         settings.RESULTS_DIR.mkdir()
 
     logger.info("Starting IRT experiment")
-    experiment = IRTExperiment(
-        dataset=dataset,
-        results_filename=settings.RESULTS_DIR / f"{dataset.get_name()}_cauchy.csv",
-        min_size=20,
-        max_size=20,
-        step_size=20,
-        num_runs=num_runs,
+    experiment = L2SExperiment(
+        dataset,
+        results_filename= f"{dataset.get_name()}_l2s",
+        min_size=1,
+        max_size=5,
+        step_size=1,
+        num_runs=1,
     )
     experiment.run(parallel=False, add=add)
