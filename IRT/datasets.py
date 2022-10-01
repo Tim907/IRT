@@ -135,19 +135,15 @@ class Dataset(abc.ABC):
 
 class Basic_Dataset(Dataset):
 
-    def __init__(self, use_caching=True):
+    def __init__(self, n, m, use_caching=True):
         super().__init__(use_caching=use_caching)
+        self.X = np.reshape(random.choices([-1, 1], k=m*n, weights=(0.4, 0.6)), (m, n))
 
     def get_name(self):
         return "basic_dataset"
 
     def get_X(self):
-        # "Anzahl Studenten"
-        n = 50
-        # "Anzahl Aufgaben"
-        m = 20
-        X = np.reshape(random.choices([-1, 1], k=m*n, weights=(0.4, 0.6)), (m, n))
-        return X
+        return self.X
 
     def load_X_y(self):
         pass
