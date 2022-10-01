@@ -1,5 +1,6 @@
 import abc
 import logging
+import math
 from pathlib import Path
 
 import random
@@ -12,6 +13,14 @@ from . import optimizer, settings
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 _rng = np.random.default_rng()
+
+
+def make_Z(X, y):
+
+    # multiply row-wise by y
+    Z = np.multiply(X, y[:, np.newaxis])
+
+    return Z
 
 
 class Dataset(abc.ABC):
@@ -147,22 +156,43 @@ class Basic_Dataset(Dataset):
         m = X.shape[0]
 
         theta = np.zeros(X.shape[1])
-        Alpha = np.vstack((theta, -np.ones(X.shape[1])))
-        Beta = np.vstack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
+        Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
+        Beta = np.vstack((np.ones(X.shape[0]), np.zeros(X.shape[0]))).T
 
-        flip = False
-        for iteration in range(100):
-            if flip:
-                updated_param = np.zeros(m * 2).reshape(2, m)
-                for i in range(m):
-                    updated_param[:, i] = optimizer.optimize(y=X[i, :], w=Alpha).x
-                Beta = updated_param
-            else:
-                updated_param = np.zeros(n * 2).reshape(2, n)
-                for i in range(n):
-                    updated_param[:, i] = optimizer.optimize(y=X[:, i], w=Beta).x
-                Alpha = updated_param
-            flip = not flip
+        sumCostOld = math.inf
+        logger.info("Computing IRT...")
+        for iteration in range(500):
+            sumCost = 0
+
+            updated_param = np.zeros(m * 2).reshape(m, 2)
+            for i in range(m):
+                Z = make_Z(Alpha, X[i, :])
+                opt = optimizer.optimize(Z)
+                updated_param[i, ] = opt.x
+                sumCost += opt.fun
+            Beta = updated_param
+
+            updated_param = np.zeros(n * 2).reshape(n, 2)
+            for i in range(n):
+                Z = make_Z(Beta, X[:, i])
+                opt = optimizer.optimize(Z)
+                updated_param[i, ] = opt.x
+                sumCost += opt.fun
+            # Alpha has fixed -1 in second column
+            updated_param[:, 1] = -1
+            Alpha = updated_param
+
+            logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
+            if sumCostOld - sumCost < 0.0001:
+                break
+            sumCostOld = sumCost
+
+        df = pd.DataFrame(Alpha)
+        df.to_csv(settings.RESULTS_DIR / f"{self.get_name()}_Alpha.csv", header=False, index=False)
+        df = pd.DataFrame(Beta)
+        df.to_csv(settings.RESULTS_DIR / f"{self.get_name()}_Beta.csv", header=False, index=False)
+        df = pd.DataFrame(X)
+        df.to_csv(settings.RESULTS_DIR / f"{self.get_name()}_data.csv", header=False, index=False)
 
         return Alpha, Beta
 

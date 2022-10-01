@@ -58,7 +58,7 @@ class BaseExperiment(abc.ABC):
         beta_opt = self.dataset.get_beta_opt()
         #objective_function = optimizer.get_objective_function(self.dataset.get_X())
         #f_opt = objective_function(beta_opt)
-
+        return 0
         logger.info("Running experiments...")
 
         def job_function(cur_config):

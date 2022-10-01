@@ -62,25 +62,58 @@ def calc(v):
 calc_vectorized = np.vectorize(calc)
 
 
+def logistic_likelihood(theta, Z, weights=None, block_size=None, k=None, max_len=None):
+    v = -Z.dot(theta)
+    if block_size is not None and k is not None:
+        v, indices = only_keep_k(v, block_size, k, max_len=max_len, biggest=True)
+        if weights is not None:
+            weights = weights[indices]
+    likelihoods = calc_vectorized(v)
+    if weights is not None:
+        likelihoods = weights * likelihoods.T
+    return np.sum(likelihoods)
+
+
+def logistic_likelihood_grad(
+    theta, Z, weights=None, block_size=None, k=None, max_len=None
+):
+    v = Z.dot(theta)
+    if block_size is not None and k is not None:
+        v, indices = only_keep_k(v, block_size, k, max_len=max_len, biggest=False)
+        if weights is not None:
+            weights = weights[indices]
+        Z = Z[indices, :]
+
+    grad_weights = 1.0 / (1.0 + np.exp(v))
+
+    if weights is not None:
+        grad_weights *= weights
+
+    return -1 * (grad_weights.dot(Z))
+
+"""
 def logistic_likelihood(theta, y, weights):
     return np.sum(np.log1p(np.exp(-y * np.matmul(theta, weights))))
 
 def logistic_likelihood_grad(theta, y, weights):
     temp = np.outer(1.0 / (1.0 + np.exp(-y * np.matmul(theta, weights))) * np.exp(-y*np.matmul(theta, weights)), np.inner(-y, weights))
     return temp.sum(axis=0)
+"""
 
-def optimize(y, w):
+def optimize(Z, w=None, block_size=None, k=None, max_len=None):
     """
     Optimizes a weighted instance of logistic regression.
     """
+    if w is None:
+        w = np.ones(Z.shape[0])
 
     def objective_function(theta):
-        return logistic_likelihood(theta, y=y, weights=w)
+        return logistic_likelihood(theta, Z, w, block_size=block_size, k=k, max_len=max_len)
 
     def gradient(theta):
-        return logistic_likelihood_grad(theta, y=y, weights=w)
+        return logistic_likelihood_grad(theta, Z, w, block_size=block_size, k=k, max_len=max_len)
 
-    theta0 = np.zeros(w.shape[0])
+    theta0 = np.zeros(Z.shape[1])
 
     return so.minimize(objective_function, theta0, method="L-BFGS-B", jac=gradient)
 
