@@ -63,17 +63,25 @@ class BaseExperiment(abc.ABC):
         theta = np.zeros(X.shape[1]) + np.random.standard_normal(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
         Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
+        Alpha_core = Alpha
+        X_core = X
 
         sumCostOld = math.inf
         for iteration in range(500):
             sumCost = 0
             weights = None
-
+            coreset = None
+            
+            if config is not None:
+                size = config["size"]
+                # logger.info(f"Computing coreset of size {n} -> {size}.")
+                coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
+                Alpha_core = Alpha[coreset]
+                X_core = X[:,coreset]
+            
             updated_param = np.zeros(m * 2).reshape(m, 2)
             for i in range(m):
-                Z = datasets.make_Z(Alpha, X[i, :])
-                if config is not None:
-                    Z, weights = self.get_reduced_matrix_and_weights(Z, config)
+                Z = datasets.make_Z(Alpha_core, X_core[i,:])
                 opt = optimizer.optimize(Z, w=weights)
                 updated_param[i, ] = opt.x
                 sumCost += opt.fun
@@ -88,10 +96,14 @@ class BaseExperiment(abc.ABC):
             # Alpha has fixed -1 in second column
             updated_param[:, 1] = -1
             Alpha = updated_param
+            Alpha_core = Alpha
 
             logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
-            if sumCostOld - sumCost < 0.0001:
-                logger.info(f"ended early because improvement of {sumCostOld - sumCost} is too low.")
+            #if sumCostOld - sumCost < 0.0001:
+            improvement = (sumCostOld - sumCost)/sumCostOld
+            logger.info(f"Iteration {iteration+1} has improved by {improvement}.")
+            if np.absolute(improvement) < 0.001:
+                logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
                 break
             sumCostOld = sumCost
 
@@ -146,7 +158,7 @@ class L2SExperiment(BaseExperiment):
 
     def get_reduced_matrix_and_weights(self, Z, config):
         size = config["size"]
-
-        reduced_matrix, weights = l2s_sampling(Z, size=size)
-
+        
+        reduced_matrix, weights = l2s_sampling(Z, size=size) 
+        # reduced_matrix is only a vector of indexes!!!
         return reduced_matrix, weights

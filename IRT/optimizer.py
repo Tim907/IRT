@@ -5,7 +5,7 @@ from numba import jit
 
 def only_keep_k(vec, block_size, k, max_len=None, biggest=True):
     """
-    Only keep the k biggest (smalles) elements for each block in a vector.
+    Only keep the k biggest (smallest) elements for each block in a vector.
 
     If max_len = None, use the whole vec. Otherwise, use vec[:max_len]
 

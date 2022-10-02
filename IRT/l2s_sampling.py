@@ -5,11 +5,10 @@ import numpy.linalg as npl
 import numpy.random as npr
 
 
-def gauss_QR(X, k=1):
+def fast_QR(X):
     """
     Description:
-        this calculates a fast approximation of the QR decomposition with a
-        gauss Vector
+        this calculates a fast approximation of the QR decomposition using the CountSketch
     Parameter:
         X - np.array : the Matrix to decompose
     Return:
@@ -36,8 +35,8 @@ def gauss_QR(X, k=1):
     except np.linalg.LinAlgError as err:
         print("LinAlgError: {0}".format(err), file=sys.stderr)
         print(
-            "Error in gauss_QR: R_ is not invertable, because singulare matrix!"
-            + " continuing with pseudo invers."
+            "Error in gauss_QR: R_ is not invertible, because of singular matrix!"
+            + " continuing with pseudo inverse."
         )
         R_inv = np.linalg.pinv(R_)
 
@@ -58,11 +57,10 @@ def _calculate_sensitivities(Q, n):
 def l2s_sampling(
     data,
     size=100,
-    k=20,
 ):
     num_samples, num_features = data.shape
 
-    Q = gauss_QR(data, k)
+    Q = fast_QR(data)
     s = _calculate_sensitivities(Q, num_samples)
 
     # calculate probabilities
@@ -73,4 +71,4 @@ def l2s_sampling(
     # calculate the weight
     weights = 1 / (p[coreset_indices] * size)
 
-    return data[coreset_indices], weights
+    return coreset_indices, weights

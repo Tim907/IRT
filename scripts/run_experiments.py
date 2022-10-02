@@ -4,7 +4,7 @@ from IRT.utils import run_experiments
 MIN_SIZE = 50
 MAX_SIZE = 50
 STEP_SIZE = 1
-NUM_RUNS = 21
+NUM_RUNS = 1
 
 dataset = Basic_Dataset(n=10000, m=20, use_caching=False)
 

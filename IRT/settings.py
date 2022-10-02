@@ -1,6 +1,7 @@
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
+# BASE_DIR = Path.home() / "Desktop" / "IRT"
 
 # the downloaded datasets will go here
 DATA_DIR = BASE_DIR / ".data-cache"
