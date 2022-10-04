@@ -6,6 +6,7 @@ from time import perf_counter
 import os
 import numpy as np
 import pandas as pd
+import scipy.stats
 from joblib import Parallel, delayed
 from sklearn.linear_model import SGDClassifier
 
@@ -60,9 +61,10 @@ class BaseExperiment(abc.ABC):
         n = X.shape[1]
         m = X.shape[0]
 
-        theta = np.zeros(X.shape[1]) + np.random.standard_normal(X.shape[1])
+        theta = np.zeros(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
-        Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
+        #Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
+        Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
         Alpha_core = Alpha
         X_core = X
 
@@ -71,21 +73,6 @@ class BaseExperiment(abc.ABC):
             sumCost = 0
             weights = None
             coreset = None
-            
-            if config is not None:
-                size = config["size"]
-                # logger.info(f"Computing coreset of size {n} -> {size}.")
-                coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
-                Alpha_core = Alpha[coreset]
-                X_core = X[:,coreset]
-            
-            updated_param = np.zeros(m * 2).reshape(m, 2)
-            for i in range(m):
-                Z = datasets.make_Z(Alpha_core, X_core[i,:])
-                opt = optimizer.optimize(Z, w=weights)
-                updated_param[i, ] = opt.x
-                sumCost += opt.fun
-            Beta = updated_param
 
             updated_param = np.zeros(n * 2).reshape(n, 2)
             for i in range(n):
@@ -98,14 +85,31 @@ class BaseExperiment(abc.ABC):
             Alpha = updated_param
             Alpha_core = Alpha
 
+            if config is not None:
+                size = config["size"]
+                # logger.info(f"Computing coreset of size {n} -> {size}.")
+                coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
+                Alpha_core = Alpha[coreset]
+                X_core = X[:, coreset]
+
+            updated_param = np.zeros(m * 2).reshape(m, 2)
+            for i in range(m):
+                Z = datasets.make_Z(Alpha_core, X_core[i,:])
+                opt = optimizer.optimize(Z, w=weights)
+                updated_param[i, ] = opt.x
+                sumCost += opt.fun
+            Beta = updated_param
+
             logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
             #if sumCostOld - sumCost < 0.0001:
             improvement = (sumCostOld - sumCost)/sumCostOld
-            logger.info(f"Iteration {iteration+1} has improved by {improvement}.")
-            if np.absolute(improvement) < 0.001:
+            if iteration >= 1:
+                logger.info(f"Iteration {iteration+1} has improved by {improvement}.")
+            if improvement < 0.001:
                 logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
                 break
             sumCostOld = sumCost
+
 
         if config is None:
             result_filename = self.dataset.get_name()
@@ -158,7 +162,7 @@ class L2SExperiment(BaseExperiment):
 
     def get_reduced_matrix_and_weights(self, Z, config):
         size = config["size"]
-        
-        reduced_matrix, weights = l2s_sampling(Z, size=size) 
+
+        reduced_matrix, weights = l2s_sampling(Z, size=size)
         # reduced_matrix is only a vector of indexes!!!
         return reduced_matrix, weights
