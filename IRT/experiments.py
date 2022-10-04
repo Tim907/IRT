@@ -105,7 +105,7 @@ class BaseExperiment(abc.ABC):
             improvement = (sumCostOld - sumCost)/sumCostOld
             if iteration >= 1:
                 logger.info(f"Iteration {iteration+1} has improved by {improvement}.")
-            if improvement < 0.001:
+            if np.absolute(improvement) < 0.001:
                 logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
                 break
             sumCostOld = sumCost
