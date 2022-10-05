@@ -133,14 +133,14 @@ class Dataset(abc.ABC):
 
 
 
-class Basic_Dataset(Dataset):
+class BasicDataset(Dataset):
 
     def __init__(self, n, m, use_caching=True):
         super().__init__(use_caching=use_caching)
         self.X = np.reshape(random.choices([-1, 1], k=m*n, weights=(0.4, 0.6)), (m, n))
 
     def get_name(self):
-        return "basic_dataset"
+        return "basic"
 
     def get_X(self):
         return self.X
@@ -148,3 +148,14 @@ class Basic_Dataset(Dataset):
     def load_X_y(self):
         pass
 
+
+class RealisticDataset(Dataset):
+
+    def get_name(self):
+        return "realistic"
+
+    def get_X(self):
+        return pd.read_csv(settings.DATA_DIR / "Labels.csv", delimiter=";", header=0, index_col=0).T.to_numpy()
+
+    def load_X_y(self):
+        pass
