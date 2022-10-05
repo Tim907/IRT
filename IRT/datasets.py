@@ -155,7 +155,7 @@ class RealisticDataset(Dataset):
         return "realistic"
 
     def get_X(self):
-        return pd.read_csv(settings.DATA_DIR / "Labels.csv", delimiter=";", header=0, index_col=0).T.to_numpy()
+        return pd.read_csv(settings.DATA_DIR / "Labels.csv", delimiter=";", header=0, index_col=0).T.to_numpy() * 2 - 1
 
     def load_X_y(self):
         pass
