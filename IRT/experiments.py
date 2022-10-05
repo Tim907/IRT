@@ -58,18 +58,20 @@ class BaseExperiment(abc.ABC):
 
 
     def IRT(self, X, config=None):
-        n = X.shape[1]
-        m = X.shape[0]
+        n = X.shape[1] # number of students
+        m = X.shape[0] # number of items
 
         theta = np.zeros(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
         #Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
-        Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
+        #Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
+        Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
+        
         Alpha_core = Alpha
         X_core = X
 
         sumCostOld = math.inf
-        for iteration in range(500):
+        for iteration in range(20):
             sumCost = 0
             weights = None
             coreset = None
@@ -107,7 +109,7 @@ class BaseExperiment(abc.ABC):
                 logger.info(f"Iteration {iteration+1} has improved by {improvement}.")
             if np.absolute(improvement) < 0.001:
                 logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
-                break
+                # break
             sumCostOld = sumCost
 
 
