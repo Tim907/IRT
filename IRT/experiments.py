@@ -71,7 +71,7 @@ class BaseExperiment(abc.ABC):
         X_core = X
 
         sumCostOld = math.inf
-        for iteration in range(100):
+        for iteration in range(20):
             sumCost = 0
             weights = None
             coreset = None
