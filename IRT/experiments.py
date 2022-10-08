@@ -60,6 +60,7 @@ class BaseExperiment(abc.ABC):
     def IRT(self, X, config=None):
         n = X.shape[1] # number of students
         m = X.shape[0] # number of items
+        logger.info(f"Running IRT with {n} students and {m} items.")
 
         theta = np.zeros(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
@@ -79,11 +80,11 @@ class BaseExperiment(abc.ABC):
             updated_param = np.zeros(n * 2).reshape(n, 2)
             for i in range(n):
                 Z = datasets.make_Z(Beta, X[:, i])
-                opt = optimizer.optimize(Z)
+                opt = optimizer.optimize(Z, bnds=((-np.inf, np.inf), (-1.0, -1.0)), theta_init = Alpha[i,:])
                 updated_param[i, ] = opt.x
                 sumCost += opt.fun
-            # Alpha has fixed -1 in second column
-            updated_param[:, 1] = -1
+            # Alpha has fixed -1 in second column 
+            # handled by bnds argument in optimizer
             Alpha = updated_param
             Alpha_core = Alpha
 
@@ -97,7 +98,7 @@ class BaseExperiment(abc.ABC):
             updated_param = np.zeros(m * 2).reshape(m, 2)
             for i in range(m):
                 Z = datasets.make_Z(Alpha_core, X_core[i,:])
-                opt = optimizer.optimize(Z, w=weights)
+                opt = optimizer.optimize(Z, w=weights, bnds=((0, np.inf), (-np.inf, np.inf)), theta_init = Beta[i,:])
                 updated_param[i, ] = opt.x
                 sumCost += opt.fun
             Beta = updated_param

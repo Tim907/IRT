@@ -100,7 +100,7 @@ def logistic_likelihood_grad(theta, y, weights):
     return temp.sum(axis=0)
 """
 
-def optimize(Z, w=None, block_size=None, k=None, max_len=None):
+def optimize(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
     """
     Optimizes a weighted instance of logistic regression.
     """
@@ -113,9 +113,10 @@ def optimize(Z, w=None, block_size=None, k=None, max_len=None):
     def gradient(theta):
         return logistic_likelihood_grad(theta, Z, w, block_size=block_size, k=k, max_len=max_len)
 
-    theta0 = np.zeros(Z.shape[1])
-
-    return so.minimize(objective_function, theta0, method="L-BFGS-B", jac=gradient)
+    if theta_init is None:
+        theta_init = np.zeros(Z.shape[1])
+    
+    return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
 
 def get_objective_function(y, w):
     return lambda theta: logistic_likelihood(theta, y, weights=w)
