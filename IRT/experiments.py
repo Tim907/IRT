@@ -61,6 +61,9 @@ class BaseExperiment(abc.ABC):
         n = X.shape[1] # number of students
         m = X.shape[0] # number of items
         logger.info(f"Running IRT with {n} students and {m} items.")
+        if config is not None:
+            size = config["size"]
+            logger.info(f"Working with coreset of size {size}.")
 
         theta = np.zeros(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
@@ -68,40 +71,42 @@ class BaseExperiment(abc.ABC):
         #Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
         
-        Alpha_core = Alpha
-        X_core = X
+        Alpha_core = None# Alpha
+        X_core = None # X
 
+        t1_start = perf_counter()
         sumCostOld = math.inf
         for iteration in range(20):
             sumCost = 0
             weights = None
             coreset = None
 
-            updated_param = np.zeros(n * 2).reshape(n, 2)
+            # updated_param = np.zeros(n * 2).reshape(n, 2)
             for i in range(n):
                 Z = datasets.make_Z(Beta, X[:, i])
                 opt = optimizer.optimize(Z, bnds=((-np.inf, np.inf), (-1.0, -1.0)), theta_init = Alpha[i,:])
-                updated_param[i, ] = opt.x
+                Alpha[i, ] = opt.x
                 sumCost += opt.fun
             # Alpha has fixed -1 in second column 
             # handled by bnds argument in optimizer
-            Alpha = updated_param
-            Alpha_core = Alpha
+            # Alpha = updated_param
+            # Alpha_core = Alpha
 
             if config is not None:
-                size = config["size"]
-                # logger.info(f"Computing coreset of size {n} -> {size}.")
                 coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
                 Alpha_core = Alpha[coreset]
                 X_core = X[:, coreset]
 
-            updated_param = np.zeros(m * 2).reshape(m, 2)
+            # updated_param = np.zeros(m * 2).reshape(m, 2)
             for i in range(m):
-                Z = datasets.make_Z(Alpha_core, X_core[i,:])
+                if config is not None:
+                    Z = datasets.make_Z(Alpha_core, X_core[i,:])
+                else:
+                    Z = datasets.make_Z(Alpha, X[i,:])
                 opt = optimizer.optimize(Z, w=weights, bnds=((0, np.inf), (-np.inf, np.inf)), theta_init = Beta[i,:])
-                updated_param[i, ] = opt.x
+                Beta[i, ] = opt.x
                 sumCost += opt.fun
-            Beta = updated_param
+            # Beta = updated_param
 
             logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
             #if sumCostOld - sumCost < 0.0001:
@@ -113,6 +118,8 @@ class BaseExperiment(abc.ABC):
                 #break
             sumCostOld = sumCost
 
+        t1_stop = perf_counter()
+        print("Running time (s):", t1_stop-t1_start)
 
         if config is None:
             result_filename = self.dataset.get_name()
