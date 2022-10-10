@@ -77,6 +77,10 @@ class BaseExperiment(abc.ABC):
         
         t1_start = perf_counter()
         sumCostOld = math.inf
+        sumCostBest = math.inf
+        bestIteration = None
+        bestAlpha = None
+        bestBeta = None
         for iteration in range(10):
             sumCost = 0
             weights = None
@@ -113,11 +117,18 @@ class BaseExperiment(abc.ABC):
             # Beta = updated_param
             
 
-            logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
+            logger.info(f"Iteration {iteration+1} has total cost {sumCost}")
+
+            if sumCost < sumCostBest:
+                bestIteration = iteration
+                bestAlpha = Alpha
+                bestBeta = Beta
+                sumCostBest = sumCost
+
             #if sumCostOld - sumCost < 0.0001:
             improvement = (sumCostOld - sumCost)/sumCostOld
             if iteration >= 1:
-                logger.info(f"Iteration {iteration+1} has improved by {improvement}.")
+                logger.info(f"Iteration {iteration+1} has improved by {improvement}")
             if np.absolute(improvement) < 0.001:
                 logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
                 #break
@@ -131,9 +142,11 @@ class BaseExperiment(abc.ABC):
         else:
             size = config["size"]
             result_filename = self.results_filename + f"_{size}"
-        df = pd.DataFrame(Alpha)
+
+        logger.info(f"Saving best Alpha and Beta from iteration {bestIteration+1} with cost {sumCostBest}")
+        df = pd.DataFrame(bestAlpha)
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha.csv", header=False, index=False)
-        df = pd.DataFrame(Beta)
+        df = pd.DataFrame(bestBeta)
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Beta.csv", header=False, index=False)
         df = pd.DataFrame(X)
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_data.csv", header=False, index=False)
