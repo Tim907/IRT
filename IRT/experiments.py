@@ -74,9 +74,10 @@ class BaseExperiment(abc.ABC):
         Alpha_core = None# Alpha
         X_core = None # X
 
+        
         t1_start = perf_counter()
         sumCostOld = math.inf
-        for iteration in range(20):
+        for iteration in range(10):
             sumCost = 0
             weights = None
             coreset = None
@@ -84,7 +85,7 @@ class BaseExperiment(abc.ABC):
             # updated_param = np.zeros(n * 2).reshape(n, 2)
             for i in range(n):
                 Z = datasets.make_Z(Beta, X[:, i])
-                opt = optimizer.optimize(Z, bnds=((-np.inf, np.inf), (-1.0, -1.0)), theta_init = Alpha[i,:])
+                opt = optimizer.optimize(Z, bnds=((-6, 6), (-1.0, -1.0)), theta_init = Alpha[i,:])
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
             # Alpha has fixed -1 in second column 
@@ -98,15 +99,19 @@ class BaseExperiment(abc.ABC):
                 X_core = X[:, coreset]
 
             # updated_param = np.zeros(m * 2).reshape(m, 2)
+            
+        
+            
             for i in range(m):
                 if config is not None:
                     Z = datasets.make_Z(Alpha_core, X_core[i,:])
                 else:
                     Z = datasets.make_Z(Alpha, X[i,:])
-                opt = optimizer.optimize(Z, w=weights, bnds=((0, np.inf), (-np.inf, np.inf)), theta_init = Beta[i,:])
+                opt = optimizer.optimize(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init = Beta[i,:])
                 Beta[i, ] = opt.x
                 sumCost += opt.fun
             # Beta = updated_param
+            
 
             logger.info(f"Iteration {iteration+1} has total cost {sumCost}.")
             #if sumCostOld - sumCost < 0.0001:
@@ -117,9 +122,9 @@ class BaseExperiment(abc.ABC):
                 logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
                 #break
             sumCostOld = sumCost
-
+            
         t1_stop = perf_counter()
-        print("Running time (s):", t1_stop-t1_start)
+        print("######## Running time (s):", t1_stop-t1_start)
 
         if config is None:
             result_filename = self.dataset.get_name()
