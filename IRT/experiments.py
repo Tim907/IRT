@@ -74,38 +74,35 @@ class BaseExperiment(abc.ABC):
         Alpha_core = None# Alpha
         X_core = None # X
 
-        
-        t1_start = perf_counter()
         sumCostOld = math.inf
         sumCostBest = math.inf
         bestIteration = None
         bestAlpha = None
         bestBeta = None
-        for iteration in range(10):
+        for iteration in range(3):
             sumCost = 0
             weights = None
             coreset = None
+            
+            t1_start = perf_counter()
 
-            # updated_param = np.zeros(n * 2).reshape(n, 2)
             for i in range(n):
                 Z = datasets.make_Z(Beta, X[:, i])
                 opt = optimizer.optimize(Z, bnds=((-6, 6), (-1.0, -1.0)), theta_init = Alpha[i,:])
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
-            # Alpha has fixed -1 in second column 
-            # handled by bnds argument in optimizer
-            # Alpha = updated_param
-            # Alpha_core = Alpha
-
+            
+            t1_stop = perf_counter()
+            print("######## Alpha Running time (s):", t1_stop-t1_start)
+            
+            
+            t1_start = perf_counter()
+            
             if config is not None:
                 coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
                 Alpha_core = Alpha[coreset]
                 X_core = X[:, coreset]
-
-            # updated_param = np.zeros(m * 2).reshape(m, 2)
-            
-        
-            
+                                    
             for i in range(m):
                 if config is not None:
                     Z = datasets.make_Z(Alpha_core, X_core[i,:])
@@ -114,8 +111,9 @@ class BaseExperiment(abc.ABC):
                 opt = optimizer.optimize(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init = Beta[i,:])
                 Beta[i, ] = opt.x
                 sumCost += opt.fun
-            # Beta = updated_param
             
+            t1_stop = perf_counter()
+            print("######## Beta Running time (s):", t1_stop-t1_start)
 
             logger.info(f"Iteration {iteration+1} has total cost {sumCost}")
 
@@ -134,8 +132,7 @@ class BaseExperiment(abc.ABC):
                 #break
             sumCostOld = sumCost
             
-        t1_stop = perf_counter()
-        print("######## Running time (s):", t1_stop-t1_start)
+        
 
         if config is None:
             result_filename = self.dataset.get_name()
