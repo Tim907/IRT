@@ -79,6 +79,7 @@ class BaseExperiment(abc.ABC):
         bestIteration = None
         bestAlpha = None
         bestBeta = None
+        runtimes_df = pd.DataFrame(columns=['Alpha', 'Beta'])
         for iteration in range(3):
             sumCost = 0
             weights = None
@@ -96,7 +97,7 @@ class BaseExperiment(abc.ABC):
             print("######## Alpha Running time (s):", t1_stop-t1_start)
             
             
-            t1_start = perf_counter()
+            t2_start = perf_counter()
             
             if config is not None:
                 coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
@@ -112,8 +113,9 @@ class BaseExperiment(abc.ABC):
                 Beta[i, ] = opt.x
                 sumCost += opt.fun
             
-            t1_stop = perf_counter()
-            print("######## Beta Running time (s):", t1_stop-t1_start)
+            t2_stop = perf_counter()
+            print("######## Beta Running time (s):", t2_stop-t2_start)
+            runtimes_df.loc[iteration] = [t1_stop-t1_start, t2_stop-t2_start]
 
             logger.info(f"Iteration {iteration+1} has total cost {sumCost}")
 
@@ -147,6 +149,7 @@ class BaseExperiment(abc.ABC):
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Beta.csv", header=False, index=False)
         df = pd.DataFrame(X)
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_data.csv", header=False, index=False)
+        runtimes_df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha_Beta_runtime.csv", header=False, index=False)
 
 
     def run(self, parallel=False, n_jobs=-3, add=False):
