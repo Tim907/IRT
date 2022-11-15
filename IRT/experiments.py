@@ -72,6 +72,7 @@ class BaseExperiment(abc.ABC):
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
         
         Alpha_core = None# Alpha
+        Beta_core = None# Beta
         X_core = None # X
 
         sumCostOld = math.inf
@@ -86,9 +87,17 @@ class BaseExperiment(abc.ABC):
             coreset = None
             
             t1_start = perf_counter()
-
+            
+            if config is not None:
+                coreset, weights = self.get_reduced_matrix_and_weights(Beta, config)
+                Beta_core = Beta[coreset]
+                X_core = X[coreset, :]
+            
             for i in range(n):
-                Z = datasets.make_Z(Beta, X[:, i])
+                if config is not None:
+                    Z = datasets.make_Z(Beta_core, X_core[:, i])
+                else:
+                    Z = datasets.make_Z(Beta, X[:, i])
                 opt = optimizer.optimize(Z, bnds=((-6, 6), (-1.0, -1.0)), theta_init = Alpha[i,:])
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
@@ -154,7 +163,7 @@ class BaseExperiment(abc.ABC):
 
     def run(self, parallel=False, n_jobs=-3, add=False):
         X = self.dataset.get_X()
-        logger.info("Computing IRT on full dataset...")
+        #logger.info("Computing IRT on full dataset...")
         self.IRT(X)
 
         logger.info("Running experiments...")
