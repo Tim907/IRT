@@ -8,6 +8,7 @@ NUM_RUNS = 1
 
 #dataset = RealisticDataset(use_caching=False)
 dataset = BasicDataset(100000,200,use_caching=False)
+dataset = BasicDataset(10000,100,use_caching=False)
 
 run_experiments(
     dataset=dataset,

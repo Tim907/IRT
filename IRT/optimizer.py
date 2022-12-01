@@ -73,10 +73,18 @@ def logistic_likelihood(theta, Z, weights=None, block_size=None, k=None, max_len
         likelihoods = weights * likelihoods.T
     return np.sum(likelihoods)
 
+def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=None, k=None, max_len=None):
+    likelihood = logistic_likelihood(theta=theta[0:2], Z=Z, weights=weights, block_size=block_size, k=k, max_len=max_len)
+    v_pos = -Z[y == 1,].dot(theta[0:2])
+    if opt_beta is True:
+        likelihood = likelihood - np.log(1 - theta[2]) * sum(y == -1) - sum(np.log(theta[2] + np.exp(v_pos)))
+    else:
+        likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.log(c[y == 1] + np.exp(v_pos)))
+    return likelihood
 
 def logistic_likelihood_grad(
-    theta, Z, weights=None, block_size=None, k=None, max_len=None
-):
+    theta, Z, weights=None, block_size=None, k=None, max_len=None):
+
     v = Z.dot(theta)
     if block_size is not None and k is not None:
         v, indices = only_keep_k(v, block_size, k, max_len=max_len, biggest=False)
@@ -91,6 +99,23 @@ def logistic_likelihood_grad(
 
     return -1 * (grad_weights.dot(Z))
 
+def logistic_likelihood_grad_3PL(
+    theta, Z, y, c, opt_beta, weights=None, block_size=None, k=None, max_len=None):
+
+    grad = logistic_likelihood_grad(theta=theta[0:2], Z=Z, weights=weights, block_size=block_size, k=k, max_len=max_len)
+
+    v_pos = Z[y == 1,].dot(theta[0:2])
+    if opt_beta is True:
+        grad = grad - sum(y == 1) * (1 / (1 + np.exp(theta[2] * v_pos))).dot(Z[y == 1])
+    else:
+        grad = grad - (1 / (1 + np.exp(c[y == 1] * v_pos))).dot(Z[y == 1])
+
+    if opt_beta is True:
+        grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
+        grad_c[y == 1] = -1 / (theta[2] + np.exp(-v_pos))
+        grad = np.append(grad, np.sum(grad_c))
+    return grad
+
 """
 def logistic_likelihood(theta, y, weights):
     return np.sum(np.log1p(np.exp(-y * np.matmul(theta, weights))))
@@ -100,7 +125,7 @@ def logistic_likelihood_grad(theta, y, weights):
     return temp.sum(axis=0)
 """
 
-def optimize(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
+def optimize_2PL(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
     """
     Optimizes a weighted instance of logistic regression.
     """
@@ -116,6 +141,25 @@ def optimize(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_
     if theta_init is None:
         theta_init = np.zeros(Z.shape[1])
     
+    return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
+
+
+def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
+    """
+    Optimizes a weighted instance of logistic regression.
+    """
+    if w is None:
+        w = np.ones(Z.shape[0])
+
+    def objective_function(theta):
+        return logistic_likelihood_3PL(theta, Z, y, c, opt_beta, w, block_size=block_size, k=k, max_len=max_len)
+
+    def gradient(theta):
+        return logistic_likelihood_grad_3PL(theta, Z, y, c, opt_beta, w, block_size=block_size, k=k, max_len=max_len)
+
+    if theta_init is None:
+        theta_init = np.zeros(Z.shape[1])
+
     return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
 
 def get_objective_function(y, w):

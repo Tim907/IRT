@@ -57,7 +57,7 @@ class BaseExperiment(abc.ABC):
         return grid
 
 
-    def IRT(self, X, config=None):
+    def IRT(self, X, ThreePL = False, config=None):
         n = X.shape[1] # number of students
         m = X.shape[0] # number of items
         logger.info(f"Running IRT with {n} students and {m} items.")
@@ -70,7 +70,10 @@ class BaseExperiment(abc.ABC):
         #Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
         #Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
-        
+        if ThreePL is True:
+            # append third column with c
+            Beta = np.hstack((Beta, 0.5 * np.ones((Beta.shape[0], 1))))
+
         Alpha_core = None# Alpha
         Beta_core = None# Beta
         X_core = None # X
@@ -95,10 +98,20 @@ class BaseExperiment(abc.ABC):
             
             for i in range(n):
                 if config is not None:
-                    Z = datasets.make_Z(Beta_core, X_core[:, i])
+                    y = X_core[:, i]
+                    Z = datasets.make_Z(Beta_core[:, 0:2], y)  # without third column of c's
                 else:
-                    Z = datasets.make_Z(Beta, X[:, i])
-                opt = optimizer.optimize(Z, bnds=((-6, 6), (-1.0, -1.0)), theta_init = Alpha[i,:])
+                    y = X[:, i]
+                    Z = datasets.make_Z(Beta[:, 0:2], y) # without third column of c's
+
+                if ThreePL is True:
+                    if config is not None:
+                        c = Beta_core[:, 2]
+                    else:
+                        c = Beta[:, 2]
+                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=False, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
+                else:
+                    opt = optimizer.optimize_2PL(Z, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
             
@@ -115,10 +128,16 @@ class BaseExperiment(abc.ABC):
                                     
             for i in range(m):
                 if config is not None:
-                    Z = datasets.make_Z(Alpha_core, X_core[i,:])
+                    y = X_core[i,:]
+                    Z = datasets.make_Z(Alpha_core, y)
                 else:
-                    Z = datasets.make_Z(Alpha, X[i,:])
-                opt = optimizer.optimize(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init = Beta[i,:])
+                    y = X[i, :]
+                    Z = datasets.make_Z(Alpha, y)
+
+                if ThreePL is True:
+                    opt = optimizer.optimize_3PL(Z, y=y, c=None, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6), (0, 1)), theta_init =Beta[i, :])
+                else:
+                    opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
                 Beta[i, ] = opt.x
                 sumCost += opt.fun
             
@@ -142,8 +161,7 @@ class BaseExperiment(abc.ABC):
                 logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
                 #break
             sumCostOld = sumCost
-            
-        
+
 
         if config is None:
             result_filename = self.dataset.get_name()
@@ -164,13 +182,13 @@ class BaseExperiment(abc.ABC):
     def run(self, parallel=False, n_jobs=-3, add=False):
         X = self.dataset.get_X()
         #logger.info("Computing IRT on full dataset...")
-        self.IRT(X)
+        self.IRT(X, ThreePL=True)
 
         logger.info("Running experiments...")
 
         def job_function(cur_config):
             logger.info(f"Current experimental config: {cur_config}")
-            self.IRT(X, cur_config)
+            self.IRT(X, ThreePL=True, config=cur_config)
 
         for cur_config in self.get_config_grid():
             job_function(cur_config)

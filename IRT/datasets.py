@@ -75,7 +75,7 @@ class Dataset(abc.ABC):
     def _get_beta_opt_cached(self):
         if not self.use_caching:
             logger.info("Computing beta_opt...")
-            beta_opt = optimizer.optimize(self.get_X(), self.get_y()).x
+            beta_opt = optimizer.optimize_2PL(self.get_X(), self.get_y()).x
             logger.info("Done.")
             return beta_opt
 
@@ -89,7 +89,7 @@ class Dataset(abc.ABC):
             return beta_opt
 
         logger.info("Computing beta_opt...")
-        beta_opt = optimizer.optimize(self.get_X(), self.get_y()).x
+        beta_opt = optimizer.optimize_2PL(self.get_X(), self.get_y()).x
         logger.info("Done.")
         np.save(beta_opt_path, beta_opt)
         logger.info(f"Saved beta_opt at {beta_opt_path}.")
