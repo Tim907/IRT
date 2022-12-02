@@ -5,9 +5,10 @@ MIN_SIZE = 100
 MAX_SIZE = 100
 STEP_SIZE = 1
 NUM_RUNS = 1
+THREE_PL = True
 
 #dataset = RealisticDataset(use_caching=False)
-dataset = BasicDataset(100000,200,use_caching=False)
+#dataset = BasicDataset(100000,200,use_caching=False)
 dataset = BasicDataset(10000,100,use_caching=False)
 
 run_experiments(
@@ -16,5 +17,6 @@ run_experiments(
     min_size=MIN_SIZE,
     max_size=MAX_SIZE,
     step_size=STEP_SIZE,
-    add=True
+    add=True,
+    ThreePL=THREE_PL
 )

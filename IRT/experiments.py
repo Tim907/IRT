@@ -72,7 +72,7 @@ class BaseExperiment(abc.ABC):
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
         if ThreePL is True:
             # append third column with c
-            Beta = np.hstack((Beta, 0.5 * np.ones((Beta.shape[0], 1))))
+            Beta = np.hstack((Beta, 0.25 * np.ones((Beta.shape[0], 1))))
 
         Alpha_core = None# Alpha
         Beta_core = None# Beta
@@ -84,7 +84,7 @@ class BaseExperiment(abc.ABC):
         bestAlpha = None
         bestBeta = None
         runtimes_df = pd.DataFrame(columns=['Alpha', 'Beta'])
-        for iteration in range(3):
+        for iteration in range(5):
             sumCost = 0
             weights = None
             coreset = None
@@ -109,9 +109,9 @@ class BaseExperiment(abc.ABC):
                         c = Beta_core[:, 2]
                     else:
                         c = Beta[:, 2]
-                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=False, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
+                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=False, w=weights, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
                 else:
-                    opt = optimizer.optimize_2PL(Z, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
+                    opt = optimizer.optimize_2PL(Z, w=weights, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
             
@@ -135,7 +135,7 @@ class BaseExperiment(abc.ABC):
                     Z = datasets.make_Z(Alpha, y)
 
                 if ThreePL is True:
-                    opt = optimizer.optimize_3PL(Z, y=y, c=None, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6), (0, 1)), theta_init =Beta[i, :])
+                    opt = optimizer.optimize_3PL(Z, y=y, c=None, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6), (0.1, 0.4)), theta_init =Beta[i, :])
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
                 Beta[i, ] = opt.x
@@ -179,16 +179,16 @@ class BaseExperiment(abc.ABC):
         runtimes_df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha_Beta_runtime.csv", header=False, index=False)
 
 
-    def run(self, parallel=False, n_jobs=-3, add=False):
+    def run(self, parallel=False, n_jobs=-3, add=False, ThreePL=False):
         X = self.dataset.get_X()
         #logger.info("Computing IRT on full dataset...")
-        self.IRT(X, ThreePL=True)
+        self.IRT(X, ThreePL=ThreePL)
 
         logger.info("Running experiments...")
 
         def job_function(cur_config):
             logger.info(f"Current experimental config: {cur_config}")
-            self.IRT(X, ThreePL=True, config=cur_config)
+            self.IRT(X, ThreePL=ThreePL, config=cur_config)
 
         for cur_config in self.get_config_grid():
             job_function(cur_config)

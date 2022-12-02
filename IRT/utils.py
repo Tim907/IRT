@@ -10,7 +10,7 @@ from .experiments import (
 logger = logging.getLogger(settings.LOGGER_NAME)
 
 
-def run_experiments(dataset: Dataset, num_runs, min_size, max_size, step_size, add=False):
+def run_experiments(dataset: Dataset, num_runs, min_size, max_size, step_size, add=False, ThreePL=False):
     # check if results directory exists
     if not settings.RESULTS_DIR.exists():
         settings.RESULTS_DIR.mkdir()
@@ -24,4 +24,4 @@ def run_experiments(dataset: Dataset, num_runs, min_size, max_size, step_size, a
         step_size=step_size,
         num_runs=1,
     )
-    experiment.run(parallel=False, add=add)
+    experiment.run(parallel=False, add=add, ThreePL=ThreePL)

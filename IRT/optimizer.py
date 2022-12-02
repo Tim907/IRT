@@ -106,9 +106,9 @@ def logistic_likelihood_grad_3PL(
 
     v_pos = Z[y == 1,].dot(theta[0:2])
     if opt_beta is True:
-        grad = grad - sum(y == 1) * (1 / (1 + np.exp(theta[2] * v_pos))).dot(Z[y == 1])
+        grad = grad + (1 / (1 + theta[2] * np.exp(v_pos))).dot(Z[y == 1])
     else:
-        grad = grad - (1 / (1 + np.exp(c[y == 1] * v_pos))).dot(Z[y == 1])
+        grad = grad + (1 / (1 + c[y == 1] * np.exp(v_pos))).dot(Z[y == 1])
 
     if opt_beta is True:
         grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
