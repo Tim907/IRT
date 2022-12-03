@@ -23,22 +23,18 @@ class BaseExperiment(abc.ABC):
     def __init__(
         self,
         num_runs,
-        min_size,
-        max_size,
-        step_size,
+        sizes,
         dataset: Dataset,
         results_filename,
     ):
         self.num_runs = num_runs
-        self.min_size = min_size
-        self.max_size = max_size
-        self.step_size = step_size
+        self.sizes = sizes
         self.dataset = dataset
         self.results_filename = results_filename
         self.optimizer = optimizer
 
     @abc.abstractmethod
-    def get_reduced_matrix_and_weights(self, Z, config):
+    def get_reduced_matrix_and_weights(self, Z, size):
         pass
 
     def get_config_grid(self):
@@ -46,13 +42,8 @@ class BaseExperiment(abc.ABC):
         Returns a list of configurations that are used to run the experiments.
         """
         grid = []
-        for size in np.arange(
-            start=self.min_size,
-            stop=self.max_size + self.step_size,
-            step=self.step_size,
-        ):
-            for run in range(1, self.num_runs + 1):
-                grid.append({"run": run, "size": size})
+        for run in range(1, self.num_runs + 1):
+            grid.append({"run": run, "sizes": self.sizes})
 
         return grid
 
@@ -62,8 +53,8 @@ class BaseExperiment(abc.ABC):
         m = X.shape[0] # number of items
         logger.info(f"Running IRT with {n} students and {m} items.")
         if config is not None:
-            size = config["size"]
-            logger.info(f"Working with coreset of size {size}.")
+            sizes = config["sizes"]
+            logger.info(f"Working with coreset of sizes {sizes}.")
 
         theta = np.zeros(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
@@ -92,7 +83,7 @@ class BaseExperiment(abc.ABC):
             t1_start = perf_counter()
             
             if config is not None:
-                coreset, weights = self.get_reduced_matrix_and_weights(Beta, config)
+                coreset, weights = self.get_reduced_matrix_and_weights(Beta, sizes[0])
                 Beta_core = Beta[coreset]
                 X_core = X[coreset, :]
             
@@ -122,7 +113,7 @@ class BaseExperiment(abc.ABC):
             t2_start = perf_counter()
             
             if config is not None:
-                coreset, weights = self.get_reduced_matrix_and_weights(Alpha, config)
+                coreset, weights = self.get_reduced_matrix_and_weights(Alpha, sizes[1])
                 Alpha_core = Alpha[coreset]
                 X_core = X[:, coreset]
                                     
@@ -166,8 +157,8 @@ class BaseExperiment(abc.ABC):
         if config is None:
             result_filename = self.dataset.get_name()
         else:
-            size = config["size"]
-            result_filename = self.results_filename + f"_{size}"
+            sizes = config["sizes"]
+            result_filename = self.results_filename + f"_{sizes}"
 
         logger.info(f"Saving best Alpha and Beta from iteration {bestIteration+1} with cost {sumCostBest}")
         df = pd.DataFrame(bestAlpha)
@@ -201,22 +192,17 @@ class L2SExperiment(BaseExperiment):
         self,
         dataset: Dataset,
         results_filename,
-        min_size,
-        max_size,
-        step_size,
+        sizes,
         num_runs
     ):
         super().__init__(
             num_runs=num_runs,
-            min_size=min_size,
-            max_size=max_size,
-            step_size=step_size,
+            sizes=sizes,
             dataset=dataset,
             results_filename=results_filename
         )
 
-    def get_reduced_matrix_and_weights(self, Z, config):
-        size = config["size"]
+    def get_reduced_matrix_and_weights(self, Z, size):
 
         reduced_matrix, weights = l2s_sampling(Z, size=size)
         # reduced_matrix is only a vector of indexes!!!
