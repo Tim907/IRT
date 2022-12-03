@@ -83,9 +83,13 @@ class BaseExperiment(abc.ABC):
             t1_start = perf_counter()
             
             if config is not None:
-                coreset, weights = self.get_reduced_matrix_and_weights(Beta, sizes[0])
-                Beta_core = Beta[coreset]
-                X_core = X[coreset, :]
+                if sizes[0] == 0:
+                    Beta_core = Beta
+                    X_core = X
+                else:
+                    coreset, weights = self.get_reduced_matrix_and_weights(Beta, sizes[0])
+                    Beta_core = Beta[coreset]
+                    X_core = X[coreset, :]
             
             for i in range(n):
                 if config is not None:
@@ -113,9 +117,13 @@ class BaseExperiment(abc.ABC):
             t2_start = perf_counter()
             
             if config is not None:
-                coreset, weights = self.get_reduced_matrix_and_weights(Alpha, sizes[1])
-                Alpha_core = Alpha[coreset]
-                X_core = X[:, coreset]
+                if sizes[1] == 0:
+                    Alpha_core = Alpha
+                    X_core = X
+                else:
+                    coreset, weights = self.get_reduced_matrix_and_weights(Alpha, sizes[1])
+                    Alpha_core = Alpha[coreset]
+                    X_core = X[:, coreset]
                                     
             for i in range(m):
                 if config is not None:

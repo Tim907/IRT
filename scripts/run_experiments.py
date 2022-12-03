@@ -1,7 +1,7 @@
 from IRT.datasets import BasicDataset, RealisticDataset
 from IRT.utils import run_experiments
 
-SIZES = (100, 200)
+SIZES = (0, 200)
 NUM_RUNS = 1
 THREE_PL = True
 
