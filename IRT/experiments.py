@@ -134,10 +134,16 @@ class BaseExperiment(abc.ABC):
                     Z = datasets.make_Z(Alpha, y)
 
                 if ThreePL is True:
-                    opt = optimizer.optimize_3PL(Z, y=y, c=None, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6), (0.1, 0.4)), theta_init =Beta[i, :])
+                    Beta[i, 2] = Beta[i, 2] + scipy.stats.norm.rvs(loc=0, scale=1/10)
+                    c = Beta[i, 2]
+                    if c < 0:
+                        c = 0
+                    if c > .5:
+                        c = .5
+                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, 0:2])
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
-                Beta[i, ] = opt.x
+                Beta[i, 0:2] = opt.x
                 sumCost += opt.fun
             
             t2_stop = perf_counter()

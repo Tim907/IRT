@@ -77,7 +77,7 @@ def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=N
     likelihood = logistic_likelihood(theta=theta[0:2], Z=Z, weights=weights, block_size=block_size, k=k, max_len=max_len)
     v_pos = -Z[y == 1,].dot(theta[0:2])
     if opt_beta is True:
-        likelihood = likelihood - np.log(1 - theta[2]) * sum(y == -1) - sum(np.log(theta[2] + np.exp(v_pos)))
+        likelihood = likelihood - np.log(1 - c) * sum(y == -1) - sum(np.log(c + np.exp(v_pos)))
     else:
         likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.log(c[y == 1] + np.exp(v_pos)))
     return likelihood
@@ -106,14 +106,14 @@ def logistic_likelihood_grad_3PL(
 
     v_pos = Z[y == 1,].dot(theta[0:2])
     if opt_beta is True:
-        grad = grad + (1 / (1 + theta[2] * np.exp(v_pos))).dot(Z[y == 1])
+        grad = grad + (1 / (1 + c * np.exp(v_pos))).dot(Z[y == 1])
     else:
         grad = grad + (1 / (1 + c[y == 1] * np.exp(v_pos))).dot(Z[y == 1])
 
-    if opt_beta is True:
-        grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
-        grad_c[y == 1] = -1 / (theta[2] + np.exp(-v_pos))
-        grad = np.append(grad, np.sum(grad_c))
+    #if opt_beta is True:
+    #    grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
+    #    grad_c[y == 1] = -1 / (theta[2] + np.exp(-v_pos))
+    #    grad = np.append(grad, np.sum(grad_c))
     return grad
 
 """
