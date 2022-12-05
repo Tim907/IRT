@@ -76,11 +76,18 @@ def logistic_likelihood(theta, Z, weights=None, block_size=None, k=None, max_len
 def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=None, k=None, max_len=None):
     likelihood = logistic_likelihood(theta=theta[0:2], Z=Z, weights=weights, block_size=block_size, k=k, max_len=max_len)
     v_pos = -Z[y == 1,].dot(theta[0:2])
-    if opt_beta is True:
-        likelihood = likelihood - np.log(1 - c) * sum(y == -1) - sum(np.log(c + np.exp(v_pos)))
+    if weights is not None:
+        if opt_beta is True:
+            likelihood = likelihood - np.log(1 - c) * sum(weights[y == -1]) - (np.log(c + np.exp(v_pos))).dot(weights[y == 1])
+        else:
+            likelihood = likelihood - (np.log(1 - c[y == -1])).dot(weights[y == -1]) - (np.log(c[y == 1] + np.exp(v_pos))).dot(weights[y == 1])
     else:
-        likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.log(c[y == 1] + np.exp(v_pos)))
+        if opt_beta is True:
+            likelihood = likelihood - np.log(1 - c) * sum(y == -1) - sum(np.log(c + np.exp(v_pos)))
+        else:
+            likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.log(c[y == 1] + np.exp(v_pos)))
     return likelihood
+    
 
 def logistic_likelihood_grad(
     theta, Z, weights=None, block_size=None, k=None, max_len=None):
@@ -105,11 +112,17 @@ def logistic_likelihood_grad_3PL(
     grad = logistic_likelihood_grad(theta=theta[0:2], Z=Z, weights=weights, block_size=block_size, k=k, max_len=max_len)
 
     v_pos = Z[y == 1,].dot(theta[0:2])
-    if opt_beta is True:
-        grad = grad + (1 / (1 + c * np.exp(v_pos))).dot(Z[y == 1])
+    
+    if weights is not None:
+        if opt_beta is True:
+            grad = grad + (np.multiply(weights[y == 1],(1 / (1 + c * np.exp(v_pos))))).dot(Z[y == 1])
+        else:
+            grad = grad + (np.multiply(weights[y == 1],(1 / (1 + c[y == 1] * np.exp(v_pos))))).dot(Z[y == 1])
     else:
-        grad = grad + (1 / (1 + c[y == 1] * np.exp(v_pos))).dot(Z[y == 1])
-
+        if opt_beta is True:
+            grad = grad + (1 / (1 + c * np.exp(v_pos))).dot(Z[y == 1])
+        else:
+            grad = grad + (1 / (1 + c[y == 1] * np.exp(v_pos))).dot(Z[y == 1])
     #if opt_beta is True:
     #    grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
     #    grad_c[y == 1] = -1 / (theta[2] + np.exp(-v_pos))

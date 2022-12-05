@@ -75,7 +75,7 @@ class BaseExperiment(abc.ABC):
         bestAlpha = None
         bestBeta = None
         runtimes_df = pd.DataFrame(columns=['Alpha', 'Beta'])
-        for iteration in range(5):
+        for iteration in range(2):
             sumCost = 0
             weights = None
             coreset = None
@@ -134,18 +134,18 @@ class BaseExperiment(abc.ABC):
                     Z = datasets.make_Z(Alpha, y)
 
                 if ThreePL is True:
-                    Beta[i, 2] = Beta[i, 2] + scipy.stats.norm.rvs(loc=0, scale=1/10)
-                    c = Beta[i, 2]
-                    if c < 0:
-                        c = 0
-                    if c > .5:
-                        c = .5
+                    c = Beta[i, 2] + scipy.stats.norm.rvs(loc=0, scale=1/10)
+                    if c < 0.001:
+                        c = 0.001
+                    if c > 0.499:
+                        c = 0.499
+                    Beta[i, 2] = c
                     opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, 0:2])
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
                 Beta[i, 0:2] = opt.x
-                sumCost += opt.fun
-            
+                sumCost += opt.fun 
+                            
             t2_stop = perf_counter()
             print("######## Beta Running time (s):", t2_stop-t2_start)
             runtimes_df.loc[iteration] = [t1_stop-t1_start, t2_stop-t2_start]
