@@ -221,3 +221,25 @@ class L2SExperiment(BaseExperiment):
         reduced_matrix, weights = l2s_sampling(Z, size=size)
         # reduced_matrix is only a vector of indexes!!!
         return reduced_matrix, weights
+        
+class UniformSamplingExperiment(BaseExperiment):
+    def __init__(
+        self,
+        dataset: Dataset,
+        results_filename,
+        sizes,
+        num_runs
+    ):
+        super().__init__(
+            num_runs=num_runs,
+            sizes=sizes,
+            dataset=dataset,
+            results_filename=results_filename
+        )
+
+    def get_reduced_matrix_and_weights(self, Z, size):
+        print(Z.shape[0])
+        reduced_matrix = np.random.choice(Z.shape[0], size=size, replace=False)
+        weights = np.ones(size)
+        # reduced_matrix is only a vector of indexes!!!
+        return reduced_matrix, weights
