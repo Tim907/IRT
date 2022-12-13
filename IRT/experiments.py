@@ -58,6 +58,11 @@ class BaseExperiment(abc.ABC):
 
         theta = np.zeros(X.shape[1])
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
+
+        Alpha = pd.read_csv(settings.DATA_DIR / "Theta_3PL_mirt.csv", delimiter=";", decimal=",", header=0, index_col=0)
+        Alpha["2"] = -np.ones(X.shape[1])
+        Alpha = Alpha.to_numpy()
+
         #Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
         #Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
@@ -75,7 +80,7 @@ class BaseExperiment(abc.ABC):
         bestAlpha = None
         bestBeta = None
         runtimes_df = pd.DataFrame(columns=['Alpha', 'Beta'])
-        for iteration in range(2):
+        for iteration in range(5):
             sumCost = 0
             weights = None
             coreset = None
@@ -90,8 +95,9 @@ class BaseExperiment(abc.ABC):
                     coreset, weights = self.get_reduced_matrix_and_weights(Beta, sizes[0])
                     Beta_core = Beta[coreset]
                     X_core = X[coreset, :]
-            
-            for i in range(n):
+
+            #for i in range(n):
+            for i in range(0):
                 if config is not None:
                     y = X_core[:, i]
                     Z = datasets.make_Z(Beta_core[:, 0:2], y)  # without third column of c's
@@ -140,7 +146,8 @@ class BaseExperiment(abc.ABC):
                     if c > 0.499:
                         c = 0.499
                     Beta[i, 2] = c
-                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, 0:2])
+                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6000)), theta_init =Beta[i, 0:2])
+                    #opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6000)), theta_init =(0,2811.7770192929283))
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
                 Beta[i, 0:2] = opt.x

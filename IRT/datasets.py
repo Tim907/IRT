@@ -159,3 +159,14 @@ class RealisticDataset(Dataset):
 
     def load_X_y(self):
         pass
+
+class Realistic3PLDataset(Dataset):
+
+    def get_name(self):
+        return "realistic3PL"
+
+    def get_X(self):
+        return pd.read_csv(settings.DATA_DIR / "Labels_3PL.csv", delimiter=";", header=0, index_col=0).T.to_numpy() * 2 - 1
+
+    def load_X_y(self):
+        pass

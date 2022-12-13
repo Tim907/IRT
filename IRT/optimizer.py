@@ -78,14 +78,17 @@ def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=N
     v_pos = -Z[y == 1,].dot(theta[0:2])
     if weights is not None:
         if opt_beta is True:
-            likelihood = likelihood - np.log(1 - c) * sum(weights[y == -1]) - (np.log(c + np.exp(v_pos))).dot(weights[y == 1])
+            likelihood = likelihood - np.log(1 - c) * sum(weights[y == -1]) - np.logaddexp(np.log(c), v_pos).dot(weights[y == 1])
         else:
-            likelihood = likelihood - (np.log(1 - c[y == -1])).dot(weights[y == -1]) - (np.log(c[y == 1] + np.exp(v_pos))).dot(weights[y == 1])
+            likelihood = likelihood - (np.log(1 - c[y == -1])).dot(weights[y == -1]) - np.logaddexp(np.log(c[y == 1]), v_pos).dot(weights[y == 1])
+            
     else:
         if opt_beta is True:
-            likelihood = likelihood - np.log(1 - c) * sum(y == -1) - sum(np.log(c + np.exp(v_pos)))
+            likelihood = likelihood - np.log(1 - c) * sum(y == -1) - sum(np.logaddexp(np.log(c), v_pos))
+            
         else:
-            likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.log(c[y == 1] + np.exp(v_pos)))
+            likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.logaddexp(np.log(c[y == 1]), v_pos))
+            
     return likelihood
     
 
