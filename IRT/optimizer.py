@@ -176,7 +176,8 @@ def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=Non
     if theta_init is None:
         theta_init = np.zeros(Z.shape[1])
 
-    return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
+    #return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
+    return so.minimize(objective_function, theta_init, method="Nelder-Mead", bounds=bnds)
 
 def get_objective_function(y, w):
     return lambda theta: logistic_likelihood(theta, y, weights=w)

@@ -62,6 +62,7 @@ class BaseExperiment(abc.ABC):
         Alpha = pd.read_csv(settings.DATA_DIR / "Theta_3PL_mirt.csv", delimiter=";", decimal=",", header=0, index_col=0)
         Alpha["2"] = -np.ones(X.shape[1])
         Alpha = Alpha.to_numpy()
+        Alpha[:,0] = (Alpha[:,0] - np.mean(Alpha[:,0])) / np.std(Alpha[:,0])
 
         #Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
         #Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
@@ -96,8 +97,8 @@ class BaseExperiment(abc.ABC):
                     Beta_core = Beta[coreset]
                     X_core = X[coreset, :]
 
-            #for i in range(n):
-            for i in range(0):
+            for i in range(n):
+            #for i in range(0):
                 if config is not None:
                     y = X_core[:, i]
                     Z = datasets.make_Z(Beta_core[:, 0:2], y)  # without third column of c's
@@ -115,7 +116,8 @@ class BaseExperiment(abc.ABC):
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((-6, 6), (-1.0, -1.0)), theta_init =Alpha[i, :])
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
-            
+
+            Alpha[:,0] = (Alpha[:,0] - np.mean(Alpha[:,0])) / np.std(Alpha[:,0])
             t1_stop = perf_counter()
             print("######## Alpha Running time (s):", t1_stop-t1_start)
             
