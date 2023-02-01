@@ -1,6 +1,6 @@
 # Logistic Item Response Theory (IRT)
 
-This is the accompanying code repository for the paper submitted at ICLR (2023)
+This is the accompanying code repository for ...
 
 ## How to install
 
