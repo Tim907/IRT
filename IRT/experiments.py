@@ -69,10 +69,7 @@ class BaseExperiment(abc.ABC):
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
         if ThreePL is True:
             # append third column with c
-            c = np.random.normal(loc=0.1, scale=0.2/3, size=Beta.shape[0])[:, None]
-            c[c < 0.01] = 0.01
-            c[c > 0.99] = 0.99
-            Beta = np.hstack((Beta, c))
+            Beta = np.hstack((Beta, 0.25 * np.ones((Beta.shape[0], 1))))
 
         Alpha_core = None# Alpha
         Beta_core = None# Beta
