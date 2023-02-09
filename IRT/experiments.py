@@ -69,7 +69,10 @@ class BaseExperiment(abc.ABC):
         Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
         if ThreePL is True:
             # append third column with c
-            Beta = np.hstack((Beta, 0.25 * np.ones((Beta.shape[0], 1))))
+            c = np.random.normal(loc=0.1, scale=0.2/3, size=Beta.shape[0])[:, None]
+            c[c < 0.01] = 0.01
+            c[c > 0.99] = 0.99
+            Beta = np.hstack((Beta, c))
 
         Alpha_core = None# Alpha
         Beta_core = None# Beta
@@ -142,17 +145,11 @@ class BaseExperiment(abc.ABC):
                     Z = datasets.make_Z(Alpha, y)
 
                 if ThreePL is True:
-                    c = Beta[i, 2] + scipy.stats.norm.rvs(loc=0, scale=1/10)
-                    if c < 0.001:
-                        c = 0.001
-                    if c > 0.499:
-                        c = 0.499
-                    Beta[i, 2] = c
-                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6000)), theta_init =Beta[i, 0:2])
-                    #opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6000)), theta_init =(0,2811.7770192929283))
+                    c = Beta[i, 2]
+                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6000), (0.01, 0.99)), theta_init=Beta[i,:])
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
-                Beta[i, 0:2] = opt.x
+                Beta[i,:] = opt.x
                 sumCost += opt.fun 
                             
             t2_stop = perf_counter()
@@ -167,13 +164,12 @@ class BaseExperiment(abc.ABC):
                 bestBeta = Beta
                 sumCostBest = sumCost
 
-            #if sumCostOld - sumCost < 0.0001:
-            improvement = (sumCostOld - sumCost)/sumCostOld
             if iteration >= 1:
+                improvement = (sumCostOld - sumCost)/sumCostOld
                 logger.info(f"Iteration {iteration+1} has improved by {improvement}")
-            if np.absolute(improvement) < 0.001:
-                logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
-                #break
+                if np.absolute(improvement) < 0.001:
+                    logger.info(f"ended early because improvement of {sumCostOld - sumCost} is only a {improvement} fraction.")
+                    #break
             sumCostOld = sumCost
 
 

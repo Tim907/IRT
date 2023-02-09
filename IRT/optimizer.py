@@ -88,7 +88,9 @@ def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=N
             
         else:
             likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.logaddexp(np.log(c[y == 1]), v_pos))
-            
+
+    if opt_beta:
+        likelihood = likelihood + c_prior_likelihood(c)
     return likelihood
     
 
@@ -126,10 +128,12 @@ def logistic_likelihood_grad_3PL(
             grad = grad + (1 / (1 + c * np.exp(v_pos))).dot(Z[y == 1])
         else:
             grad = grad + (1 / (1 + c[y == 1] * np.exp(v_pos))).dot(Z[y == 1])
-    #if opt_beta is True:
-    #    grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
-    #    grad_c[y == 1] = -1 / (theta[2] + np.exp(-v_pos))
-    #    grad = np.append(grad, np.sum(grad_c))
+
+    if opt_beta is True:
+        grad_c = 1 / (1 - c) * np.ones(len(y))
+        grad_c[y == 1] = -1 / (c + np.exp(-v_pos))
+        grad = np.append(grad, np.sum(grad_c))
+        grad = grad + c_prior_gradient(c)
     return grad
 
 """
@@ -160,6 +164,11 @@ def optimize_2PL(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, th
     return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
 
 
+def c_prior_likelihood(c):
+    return np.sum((c - 0.1)**2 / (0.08 / 3))
+def c_prior_gradient(c):
+    return np.sum((c - 0.1) / (0.04 / 3))
+
 def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
     """
     Optimizes a weighted instance of logistic regression.
@@ -171,13 +180,18 @@ def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=Non
         return logistic_likelihood_3PL(theta, Z, y, c, opt_beta, w, block_size=block_size, k=k, max_len=max_len)
 
     def gradient(theta):
-        return logistic_likelihood_grad_3PL(theta, Z, y, c, opt_beta, w, block_size=block_size, k=k, max_len=max_len)
+        temp = logistic_likelihood_grad_3PL(theta, Z, y, c, opt_beta, w, block_size=block_size, k=k, max_len=max_len)
+        #print(temp)
+        return temp
 
     if theta_init is None:
         theta_init = np.zeros(Z.shape[1])
 
-    #return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
-    return so.minimize(objective_function, theta_init, method="Nelder-Mead", bounds=bnds)
+    temp = so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
+    #temp = so.minimize(objective_function, theta_init, method="Nelder-Mead", bounds=bnds)
+    if np.isnan(temp.fun):
+        raise ValueError("likelihood is nan")
+    return temp
 
 def get_objective_function(y, w):
     return lambda theta: logistic_likelihood(theta, y, weights=w)
