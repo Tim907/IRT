@@ -1,0 +1,56 @@
+Wie laufen die Experimente an dem IRT-Satz?
+
+1. Generierung eines Datensatzes
+2. Finde eine Lösung
+3. Auswertung der gefundenen Lösung
+
+Jetzt die Schritte in Detail
+
+1. Generierung eines Datensatzes
+	Dies sind die Codes von Rieke (mit kleinen Anpassungen von Susanne/mir), die in "\R Codes\Rieke" sind. 
+	
+	Wenn man in 3PL Variante die Werte von C fixieren will, kommentiert man die Zeile 109 aus, und die Zeile 110 ein (mit passendem Faktor, hier 0.25). 
+	
+	Die Datei "Labels...csv" dient als Eingabe für den Schritt 2. Für die Dokumentierung speichert man neben den Labels auch die "True Values"-Dateien. Die Datei MatrixP muss nicht gespeichert werden, außerdem ist sie manchmal zu groß. 
+
+2. Finde eine Lösung
+	Hierfür wird Code im Ordner "IRT" genutzt. Die Einstellungen sind auf ein Ordner so gestellt, dass der Ordner "IRT" sich auf dem Desktop befinden sollte. Wenn einmal die Einstellungen angepasst sind, ruft man folgende zwei Anweisungen in der Konsole (z.B. Anaconda Powershell Prompt) auf, vorausgesetzt dass Python vorinstalliert ist.
+		pip install .
+		python ./scripts/run_experiments.py
+	Nach jedem Experiment speichert man die erzeugten Dateien woanders hin. Die Dateien landeten in "\Desktop\IRT\experimental-results". Die "Data" Dateien sind nicht wichtig, und müssen nicht gespeichert werden, alle andere schon. Das Prozess hat zwei Schritte: die Optimierung auf dem ganzen Input, und die Optimierung auf der/den Kernmenge/n.
+	
+	Wie wählt man ob es 2PL oder 3PL sein sollte:
+		In der Datei "\IRT\scripts\run_experiments.py", Zeile 6, falls man 2PL haben will, sollte False stehen, ansonsten True.
+		Dazu wählt man die passende Eingabedatei (durch Ein-/Auskommentieren der Zeilen 11/12.
+		Im Praxis sollte man für die 3PL in der Datei "\IRT\IRT\ls2_sampling.py" in den Zeilen 22 und 28 den Faktor 1 durch 4 ersetzen (um die Konvergenz zu verbessern, eine größere Matrix wird genutzt).
+	
+	Wie wählt man die Größe der Kernmenge:
+		In der Datei "\IRT\scripts\run_experiments.py", Zeile 24, "(0,1000)" bedeutet keine Kernmenge in m-Anzahl Items, und 1000 für die n-Anzahl Examinees. Einfach die 1000 anpassen.
+	
+	Wie passt man den Namen der Input-Datei:
+		In der Datei "\IRT\IRT\datasets.py", Zeilen 158 und 169, der Standardname der Inputdatei (generiert im Punkt 1), die am Anfang in "\IRT\.data-cache" zu kopieren ist, ist "Labels.csv" für 2PL, und Labels_3PL.csv" für 3PL. Am einfachsten ist, den Namen der erzeugten Datei zu den Standardnamen zu ändern. Hier kann man auch den Namen der Ausgabendateien steuern (durch eine Änderung der Basis).
+	
+	Wie schaltet man die Teile des Prozesess ein und aus:
+		Default sind beide Teile ein. In der Datei "\IRT\IRT\experiments.py"
+			Um die Optimierung auf dem ganzen Input auszuschalten, kommentiere die Zeile 206 aus.
+			Um die Optimierung auf der Kernmenge auszuschalten, kommentiere die Zeilen 214 und 215 aus.
+			
+	Wie richtet man ein, wie viele Iterationen werden durchgelaufen:
+		In der Datei "\IRT\IRT\experiments.py", Zeile 86, stellt man den Range-Parameter.
+	
+	Wie richtet man welchen Parameter ein:
+		Wahl des Optimizers: in "\IRT\IRT\optimizer.py"
+			Für Gradienten: Schalte Zeile 196 ein.
+			Für Nelder-Mead: Schalte Zeile 197 ein.
+			
+	#Was wenn man im Schritt 1 den Parameter C auf einen bestimmten Wert (z.B. C=0.25) gestellt hat:
+	#	Dann müsste man auch nicht nach C optimieren, sondern direkt den Wert (0.25) angeben. In "\IRT\IRT\experiments.py", kommentiere in der Zeile 145 ab "+" alles aus, sowie die Zeilen 146-150.
+		
+	Was wenn man uniforme Sampling testen will?
+		In der Datei "\IRT\IRT\utils.py", tauscht man die Zeilen 38 bis 44, durch die Zeilen 29 bis 35 aus.
+		
+	Was wenn man gleich mehrere Wiederholungen eines Experimentes anordnen möchte?
+		In der Datei "\IRT\scripts\run_experiments.py", Zeile 8, setzt man NUM_RUNS = 10 für 10 Wiederholungen.
+		
+3. Auswertung der gefundenen Lösung
+	Dies sind die Codes von Susanne, die in "\R Codes\Susanne" sind. Um die Ergebnisse vom Schritt 2 auzuwerten, muss man in der vorhandenen R-Datei den Arbeitsordner in der Zeile 6 anpassen (bei mir "C:/Users/Krivosija/Desktop/R Codes/Susanne/"). Man kopiert zu diesen Ordner die vier Dateien die im Schritt 2 entstanden sind, und schreibt ihre Namen in Zeilen 10, 11, 14, und 15 an entsprechenden Stellen. Nach dem Aufruf dieses Codes bekommt man zwei PDFs. Die "grüne" Datei zeigt, wie die Ergebnisse der Ganzdatei und der Kernmenge korrelieren. Nach jedem Experiment speichert man die gewonnene PDFs.
