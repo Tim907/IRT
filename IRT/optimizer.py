@@ -78,19 +78,20 @@ def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=N
     v_pos = -Z[y == 1,].dot(theta[0:2])
     if weights is not None:
         if opt_beta is True:
-            likelihood = likelihood - np.log(1 - c) * sum(weights[y == -1]) - np.logaddexp(np.log(c), v_pos).dot(weights[y == 1])
+            likelihood = likelihood - np.log(1 - theta[2]) * sum(weights[y == -1]) - np.logaddexp(np.log(theta[2]), v_pos).dot(weights[y == 1])
         else:
             likelihood = likelihood - (np.log(1 - c[y == -1])).dot(weights[y == -1]) - np.logaddexp(np.log(c[y == 1]), v_pos).dot(weights[y == 1])
             
     else:
         if opt_beta is True:
-            likelihood = likelihood - np.log(1 - c) * sum(y == -1) - sum(np.logaddexp(np.log(c), v_pos))
-            
+            likelihood = likelihood - np.log(1 - theta[2]) * sum(y == -1) - sum(np.logaddexp(np.log(theta[2]), v_pos))
         else:
             likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.logaddexp(np.log(c[y == 1]), v_pos))
 
     if opt_beta:
-        likelihood = likelihood + c_prior_likelihood(c)
+        likelihood = likelihood + prior_likelihood(theta[0], theta[1], theta[2], np.sqrt(sum(weights))/10) #1/sum(weights)*
+    else:
+        likelihood = likelihood + prior_likelihood(2.75, theta[0], 0.1, np.sqrt(sum(weights))/10) #1/sum(weights)* was 10 put 5
     return likelihood
     
 
@@ -120,20 +121,23 @@ def logistic_likelihood_grad_3PL(
     
     if weights is not None:
         if opt_beta is True:
-            grad = grad + (np.multiply(weights[y == 1],(1 / (1 + c * np.exp(v_pos))))).dot(Z[y == 1])
+            grad = grad + (np.multiply(weights[y == 1],(1 / (1 + theta[2] * np.exp(v_pos))))).dot(Z[y == 1])
         else:
             grad = grad + (np.multiply(weights[y == 1],(1 / (1 + c[y == 1] * np.exp(v_pos))))).dot(Z[y == 1])
     else:
         if opt_beta is True:
-            grad = grad + (1 / (1 + c * np.exp(v_pos))).dot(Z[y == 1])
+            grad = grad + (1 / (1 + theta[2] * np.exp(v_pos))).dot(Z[y == 1])
         else:
             grad = grad + (1 / (1 + c[y == 1] * np.exp(v_pos))).dot(Z[y == 1])
 
     if opt_beta is True:
-        grad_c = 1 / (1 - c) * np.ones(len(y))
-        grad_c[y == 1] = -1 / (c + np.exp(-v_pos))
+        grad_c = 1 / (1 - theta[2]) * np.ones(len(y))
+        grad_c[y == 1] = -1 / (theta[2] + np.exp(-v_pos))
         grad = np.append(grad, np.sum(grad_c))
-        grad = grad + c_prior_gradient(c)
+        grad = grad + prior_gradient(theta[0], theta[1], theta[2], np.sqrt(sum(weights))/10) #1/sum(weights)*  was 10 put 5
+    else:
+        grad = grad + prior_gradient(2.75, theta[0], 0.1, np.sqrt(sum(weights))/10) #1/sum(weights)* see up
+    
     return grad
 
 """
@@ -164,10 +168,12 @@ def optimize_2PL(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, th
     return so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
 
 
-def c_prior_likelihood(c):
-    return np.sum((c - 0.1)**2 / (0.08 / 3))
-def c_prior_gradient(c):
-    return np.sum((c - 0.1) / (0.04 / 3))
+def prior_likelihood(a, b, c, d):
+#    return np.sum((c - 0.1)**2 / (0.08 / 3))
+    return d*(np.sum((a - 2.75)**2 / (0.72 / 3)) + np.sum((b)**2 / (8 / 3)) + np.sum((c - 0.1)**2 / (0.08 / (3*10)))) #see also up the changes
+def prior_gradient(a, b, c, d):
+#    return np.sum((c - 0.1) / (0.04 / 3))
+    return d*(np.sum(2*(a - 2.75) / (0.72 / 3)) + np.sum(2*(b) / (8 / 3)) + np.sum(2*(c - 0.1) / (0.08 / (3*10)))) #the last factor (10) is additional weight for the prior C
 
 def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
     """

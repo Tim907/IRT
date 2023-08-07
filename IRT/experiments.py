@@ -56,7 +56,7 @@ class BaseExperiment(abc.ABC):
             sizes = config["sizes"]
             logger.info(f"Working with coreset of sizes {sizes}.")
 
-        theta = np.zeros(X.shape[1])
+        theta = np.random.standard_normal(X.shape[1]) #np.zeros(X.shape[1]) + 
         Alpha = np.vstack((theta, -np.ones(X.shape[1]))).T
 
         #Alpha = pd.read_csv(settings.DATA_DIR / "Theta_3PL_mirt.csv", delimiter=";", decimal=",", header=0, index_col=0)
@@ -66,7 +66,9 @@ class BaseExperiment(abc.ABC):
 
         #Beta = np.vstack((np.ones(X.shape[0]) + np.random.standard_normal(X.shape[0]), np.random.standard_normal(X.shape[0]))).T
         #Beta = np.vstack((scipy.stats.norm.ppf((X == 1).mean(axis=1)) / (np.sqrt(np.absolute(1-(0.5)**2)) / 1.702), np.ones(X.shape[0]) * 0.15)).T
-        Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
+        #Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
+        #Beta = np.vstack((np.ones(X.shape[0]) * 0.851, scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75))).T
+        Beta = np.vstack((np.ones(X.shape[0]) * 2.75, np.zeros(X.shape[0]))).T
         if ThreePL is True:
             # append third column with c
             Beta = np.hstack((Beta, 0.25 * np.ones((Beta.shape[0], 1))))
@@ -81,7 +83,7 @@ class BaseExperiment(abc.ABC):
         bestAlpha = None
         bestBeta = None
         runtimes_df = pd.DataFrame(columns=['Alpha', 'Beta'])
-        for iteration in range(5):
+        for iteration in range(5): ###############################  here the number of iterations is set  ##############
             sumCost = 0
             weights = None
             coreset = None
@@ -117,7 +119,8 @@ class BaseExperiment(abc.ABC):
                 Alpha[i, ] = opt.x
                 sumCost += opt.fun
 
-            Alpha[:,0] = (Alpha[:,0] - np.mean(Alpha[:,0])) / np.std(Alpha[:,0])
+            #print(Alpha[:,0])
+            #Alpha[:,0] = (Alpha[:,0] - np.mean(Alpha[:,0])) / (np.std(Alpha[:,0])+0.01)
             t1_stop = perf_counter()
             print("######## Alpha Running time (s):", t1_stop-t1_start)
             
@@ -142,11 +145,12 @@ class BaseExperiment(abc.ABC):
                     Z = datasets.make_Z(Alpha, y)
 
                 if ThreePL is True:
-                    c = Beta[i, 2]
-                    opt = optimizer.optimize_3PL(Z, y=y, c=c, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6000), (0.01, 0.99)), theta_init=Beta[i,:])
+                    #c = Beta[i, 2]
+                    opt = optimizer.optimize_3PL(Z, y=y, c=None, opt_beta=True, w=weights, bnds=((0, 5), (-6, 6), (0.001, 0.499)), theta_init=Beta[i,:])
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init =Beta[i, :])
                 Beta[i,:] = opt.x
+                #print(Beta[i, ])
                 sumCost += opt.fun 
                             
             t2_stop = perf_counter()
@@ -171,24 +175,34 @@ class BaseExperiment(abc.ABC):
 
 
         if config is None:
-            result_filename = self.dataset.get_name()
+            result_filename = self.results_filename # self.dataset.get_name() #+ f"_M2" #for not overwriting the file in the case of repetition
         else:
             sizes = config["sizes"]
             result_filename = self.results_filename + f"_{sizes}"
 
         logger.info(f"Saving best Alpha and Beta from iteration {bestIteration+1} with cost {sumCostBest}")
+        
+        #the following lines were added to store the optimal reached cost, to compare among multiple iterations
+        cumulative_res_filename = self.dataset.get_name() + f"_goal_values.csv"
+        f = open(settings.RESULTS_DIR / f"{cumulative_res_filename}", "at")
+        if config is None:
+            f.write("full,"+f"{sumCostBest}\n")
+        else:
+            f.write("core,"+f"{sumCostBest}\n")
+        f.close()
+        
         df = pd.DataFrame(bestAlpha)
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha.csv", header=False, index=False)
         df = pd.DataFrame(bestBeta)
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Beta.csv", header=False, index=False)
-        df = pd.DataFrame(X)
-        df.to_csv(settings.RESULTS_DIR / f"{result_filename}_data.csv", header=False, index=False)
+        # df = pd.DataFrame(X)
+        # df.to_csv(settings.RESULTS_DIR / f"{result_filename}_data.csv", header=False, index=False)
+        # I have turned off the saving of Data.csv
         runtimes_df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha_Beta_runtime.csv", header=False, index=False)
-
 
     def run(self, parallel=False, n_jobs=-3, add=False, ThreePL=False):
         X = self.dataset.get_X()
-        #logger.info("Computing IRT on full dataset...")
+        logger.info("Computing IRT on full dataset...")
         self.IRT(X, ThreePL=ThreePL)
 
         logger.info("Running experiments...")

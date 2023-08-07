@@ -19,13 +19,13 @@ def fast_QR(X):
 
     # mapping function to compress n x d - matrix into d**2 x d - matrix
     # f: {0,...,n-1} -> {0,...,d**2-1}
-    f = npr.randint(d ** 2, size=n)
+    f = npr.randint(1*(d ** 2), size=n) #here: in case of a weak convergence for 3PL, try with larger matrix, and replace 1* with 4*
     # mapping function to determine the sign
     # g: {0,...,n-1} -> {-1,1}
     g = npr.randint(2, size=n) * 2 - 1
 
     # init the sketch
-    X_ = np.zeros((d ** 2, d))
+    X_ = np.zeros((1*(d ** 2), d)) #here: in case of a weak convergence for 3PL, try with larger matrix, and replace 1* with 4*
     for i in range(n):
         X_[f[i]] += g[i] * X[i]
 

@@ -152,7 +152,7 @@ class BasicDataset(Dataset):
 class RealisticDataset(Dataset):
 
     def get_name(self):
-        return "realistic"
+        return "realistic_M1" #for parallel runs on the server change here the name of the resulting files
 
     def get_X(self):
         return pd.read_csv(settings.DATA_DIR / "Labels.csv", delimiter=";", header=0, index_col=0).T.to_numpy() * 2 - 1
@@ -163,7 +163,7 @@ class RealisticDataset(Dataset):
 class Realistic3PLDataset(Dataset):
 
     def get_name(self):
-        return "realistic3PL"
+        return "realistic3PL_M1" #for parallel runs on the server change here the name of the resulting files
 
     def get_X(self):
         return pd.read_csv(settings.DATA_DIR / "Labels_3PL.csv", delimiter=";", header=0, index_col=0).T.to_numpy() * 2 - 1
