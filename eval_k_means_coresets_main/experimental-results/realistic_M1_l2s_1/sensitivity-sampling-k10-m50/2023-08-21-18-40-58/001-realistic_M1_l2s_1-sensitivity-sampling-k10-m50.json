@@ -1,0 +1,14 @@
+{
+    "algorithm": "sensitivity-sampling",
+    "dataset": "realistic_M1_l2s_1",
+    "k": 10,
+    "m": 50,
+    "iteration": 1,
+    "randomSeed": 1918669391,
+    "output_dir": "eval_k_means_coresets_main/experimental-results/realistic_M1_l2s_1/sensitivity-sampling-k10-m50/2023-08-21-18-40-58",
+    "command": "eval_k_means_coresets_main/gs/build/gs sensitivity-sampling realistic_M1_l2s_1 eval_k_means_coresets_main/data/input/realistic_M1_l2s_1.txt.gz 10 50 1918669391 eval_k_means_coresets_main/experimental-results/realistic_M1_l2s_1/sensitivity-sampling-k10-m50/2023-08-21-18-40-58",
+    "start_time": "2023-08-21T18:40:58.781290",
+    "end_time": "2023-08-21T18:40:58.998437",
+    "duration_secs": 0.217147,
+    "process_id": -2
+}

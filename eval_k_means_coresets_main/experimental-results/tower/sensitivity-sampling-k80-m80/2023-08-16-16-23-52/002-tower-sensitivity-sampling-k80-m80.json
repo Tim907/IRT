@@ -1,0 +1,14 @@
+{
+    "algorithm": "sensitivity-sampling",
+    "dataset": "tower",
+    "k": 80,
+    "m": 80,
+    "iteration": 2,
+    "randomSeed": 1340224736,
+    "output_dir": "experimental-results/tower/sensitivity-sampling-k80-m80/2023-08-16-16-23-52",
+    "command": "gs/build/gs sensitivity-sampling tower data/input/Tower.txt 80 80 1340224736 experimental-results/tower/sensitivity-sampling-k80-m80/2023-08-16-16-23-52",
+    "start_time": "2023-08-16T16:23:52.042828",
+    "end_time": "2023-08-16T16:29:15.105788",
+    "duration_secs": 323.06296,
+    "process_id": -2
+}
