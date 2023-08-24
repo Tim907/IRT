@@ -1,8 +1,12 @@
 import abc
+import csv
+import io
 import logging
 import math
+from io import StringIO
 from time import perf_counter
 
+import subprocess
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -13,6 +17,7 @@ from . import optimizer, settings, datasets
 from .datasets import Dataset
 from .l2s_sampling import l2s_sampling
 from eval_k_means_coresets_main.xrun import gen2, go2
+import pathlib
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -278,13 +283,33 @@ class SensitivitySamplingExperiment(BaseExperiment):
 
     def get_reduced_matrix_and_weights(self, Z, size):
 
+        # Save data input for subprocess
         np.savetxt(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz", Z, delimiter=",")
 
-        gen2.call_main(1, 1, coreset_size=size, number_clusters=10, algorithms=["sensitivity-sampling"], datasets=[self.results_filename], force=True)
-        output_dir = go2.call_main("eval_k_means_coresets_main/experimental-results", 1)
-        print(output_dir)
-        if output_dir is None:
-            raise ValueError("output_dir wurde nicht erzeugt.")
-        reduced_matrix = np.loadtxt(f"{output_dir}/results.txt.gz", skiprows=1, delimiter=" ")
+        algorithm_exe_path = "eval_k_means_coresets_main/gs/build/gs"
+        random_seed = gen2.generate_random_seed()
+        cmd = [
+            algorithm_exe_path,
+            f"{self.results_filename}",  # Dataset
+            pathlib.Path(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz"),  # Input path
+            str(10),  # Number of clusters
+            str(size),  # Coreset size
+            str(random_seed),  # Random Seed
+            "eval_k_means_coresets_main/data/output/",  # Output dir
+        ]
+
+        # Remove temporary result file
+        pathlib.Path("eval_k_means_coresets_main/data/output/results.txt.gz").unlink()
+
+        print(f"Launching experiment with command:\n '{cmd}'")
+        proc = subprocess.call(
+            args=cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE
+        )
+
+        # Load result file
+        selection = np.loadtxt("eval_k_means_coresets_main/data/output/results.txt.gz", delimiter=" ")
+
+        reduced_matrix = selection[:, 1]
         weights = np.ones(reduced_matrix.shape[0])
-        return reduced_matrix, weights
+        return selection[:, 1], selection[:, 0]

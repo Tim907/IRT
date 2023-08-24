@@ -78,7 +78,7 @@ void outputResultsToFile(const std::shared_ptr<blaze::DynamicMatrix<double>> ori
   coreset->writeToStream(*originalDataPoints, outData);
 }
 
-int main(int argc, char **argv)
+int main_alt(int argc, char **argv)
 {
   if (argc < 8)
   {
@@ -222,6 +222,88 @@ int main(int argc, char **argv)
 
   outputResultsToFile(data, coreset, outputDir);
   writeDoneFile(outputDir);
+  return 0;
+}
+
+int main(int argc, char **argv)
+{
+  if (argc < 7)
+  {
+    std::cout << "Usage: algorithm dataset k m seed output_path [low_data_path]" << std::endl;
+    //std::cout << "  algorithm     = algorithm" << std::endl;
+    std::cout << "  dataset       = dataset name" << std::endl;
+    std::cout << "  data_path     = file path to dataset" << std::endl;
+    std::cout << "  k             = number of desired centers" << std::endl;
+    std::cout << "  m             = coreset size" << std::endl;
+    std::cout << "  seed          = random seed" << std::endl;
+    std::cout << "  output_dir    = path to output results" << std::endl;
+    std::cout << std::endl;
+    std::cout << "7 arguments expected, got " << argc - 1 << ":" << std::endl;
+    for (int i = 1; i < argc; ++i)
+      std::cout << " " << i << ": " << argv[i] << std::endl;
+    return 1;
+  }
+
+  std::string algorithmName = "sensitivity-sampling";
+  std::string datasetName(argv[1]);
+  std::string dataFilePath(argv[2]);
+  size_t k = std::stoul(argv[3]);
+  size_t m = std::stoul(argv[4]);
+  int randomSeed = std::stoi(argv[5]);
+  std::string outputDir(argv[6]);
+
+  boost::algorithm::to_lower(algorithmName);
+  boost::algorithm::trim(algorithmName);
+
+  boost::algorithm::to_lower(datasetName);
+  boost::algorithm::trim(datasetName);
+
+  std::cout << "Running " << algorithmName << " with following parameters:\n";
+  std::cout << " - Dataset:       " << datasetName << "\n";
+  std::cout << " - Input path:    " << dataFilePath << "\n";
+  std::cout << " - Clusters:      " << k << "\n";
+  std::cout << " - Coreset size:  " << m << "\n";
+  std::cout << " - Random Seed:   " << randomSeed << "\n";
+  std::cout << " - Output dir:    " << outputDir << "\n";
+
+  std::cout << "Initializing randomess with random seed: " << randomSeed << "\n";
+  utils::Random::initialize(randomSeed);
+
+  std::shared_ptr<IDataParser> dataParser;
+  dataParser = std::make_shared<CsvParser>();
+
+  std::shared_ptr<blaze::DynamicMatrix<double>> data;
+  {
+    utils::StopWatch timeDataParsing(true);
+    //std::cout << "Parsing data:" << std::endl;
+    data = dataParser->parse(dataFilePath);
+    //std::cout << "Data parsed: " << data->rows() << " x " << data->columns() << " in "<< timeDataParsing.elapsedStr() << std::endl;
+  }
+
+  std::cout << "Begin coreset algorithm: " << algorithmName << "\n";
+  std::shared_ptr<coresets::Coreset> coreset;
+  utils::StopWatch timeCoresetComputation(true);
+
+  coresets::SensitivitySampling algo(2*k, m);
+  coreset = algo.run(*data);
+
+  std::cout << "Algorithm completed in " << timeCoresetComputation.elapsedStr() << std::endl;
+
+  outputResultsToFile(data, coreset, outputDir);
+  writeDoneFile(outputDir);
+
+  // if (useLowDimDataset)
+  // {
+  //   // We used low-dimensional data to compute the coreset.
+  //   // Get rid of the low-dimensional data and load the original data.
+  //   data->resize(0, 0, false);
+  //   data->shrinkToFit();
+
+  //   std::cout << "Parsing original data:\n";
+  //   utils::StopWatch timeDataParsing(true);
+  //   data = dataParser->parse(dataFilePath);
+  //   std::cout << "Data parsed: " << data->rows() << " x " << data->columns() << " in "<< timeDataParsing.elapsedStr() << ".\n";
+  // }
   return 0;
 }
 

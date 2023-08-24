@@ -65,26 +65,31 @@ Coreset::size() const
     return this->points.size();
 }
 
+
 void Coreset::writeToStream(const blaze::DynamicMatrix<double> &originalDataPoints, std::ostream &out)
 {
-    const size_t m = this->points.size();
+    //const size_t m = this->points.size();
     const size_t d = originalDataPoints.columns();
 
     // Output coreset size
-    out << m << "\n";
+    // out << m << "\n";
 
     std::shared_ptr<blaze::DynamicVector<double>> center;
 
     // Output coreset points
     for (auto &&point : points)
     {
-        // Output coreset point weight
-        out << point->Weight << " ";
-
         if (point->IsCenter)
         {
             center = this->centers.at(point->Index);
+            continue;
         }
+
+        // Output coreset point weight
+        out << point->Weight << " ";
+        out << point->Index;
+        out << "\n";
+        continue;
 
         // Output coreset point entries.
         for (size_t j = 0; j < d; ++j)
