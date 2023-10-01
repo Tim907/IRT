@@ -44,4 +44,4 @@ build/
 /pynb/figures
 /pynb/figures-skadi
 
-!gs/build/gs
+!gs/build/
