@@ -1,3 +1,4 @@
+build
 .git
 .idea
 eval_k_means_coresets_main/boost_*
