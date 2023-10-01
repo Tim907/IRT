@@ -27,7 +27,7 @@
 *.lib
 
 # Executables
-*.exe
+#*.exe
 *.out
 *.app
 
@@ -43,3 +43,5 @@ __pycache__
 build/
 /pynb/figures
 /pynb/figures-skadi
+
+!gs/build/gs
