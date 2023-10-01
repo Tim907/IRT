@@ -289,6 +289,17 @@ class SensitivitySamplingExperiment(BaseExperiment):
 
         # Save data input for subprocess
         print(f"Current working directory: {os.getcwd()}")
+
+        pathlib.Path("eval_k_means_coresets_main/data/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/input/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/output/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/queue/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/queue/completed/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/queue/discarded/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/queue/in-progress/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/data/queue/ready/").mkdir(exist_ok=True)
+        pathlib.Path("eval_k_means_coresets_main/experimental-results/").mkdir(exist_ok=True)
+
         np.savetxt(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz", Z, delimiter=",")
 
         algorithm_exe_path = "eval_k_means_coresets_main/gs/build/gs"
