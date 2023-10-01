@@ -76,20 +76,17 @@ void Coreset::writeToStream(const blaze::DynamicMatrix<double> &originalDataPoin
 
     std::shared_ptr<blaze::DynamicVector<double>> center;
 
-    // Output coreset points
+    // Output non-center coreset points
     for (auto &&point : points)
     {
         if (point->IsCenter)
         {
-            center = this->centers.at(point->Index);
             continue;
         }
 
         // Output coreset point weight
         out << point->Weight << " ";
-        out << point->Index;
-        out << "\n";
-        continue;
+        out << point->Index << " ";
 
         // Output coreset point entries.
         for (size_t j = 0; j < d; ++j)

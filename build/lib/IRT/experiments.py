@@ -1,9 +1,13 @@
 import abc
+import csv
+import io
 import logging
 import math
+import os
+from io import StringIO
 from time import perf_counter
 
-import os, sys
+import subprocess
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -13,6 +17,8 @@ from sklearn.linear_model import SGDClassifier
 from . import optimizer, settings, datasets
 from .datasets import Dataset
 from .l2s_sampling import l2s_sampling
+from eval_k_means_coresets_main.xrun import gen2, go2
+import pathlib
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -138,7 +144,7 @@ class BaseExperiment(abc.ABC):
                                     
             for i in range(m):
                 if config is not None:
-                    y = X_core[i,:]
+                    y = X_core[i, :]
                     Z = datasets.make_Z(Alpha_core, y)
                 else:
                     y = X[i, :]
@@ -278,6 +284,41 @@ class SensitivitySamplingExperiment(BaseExperiment):
 
     def get_reduced_matrix_and_weights(self, Z, size):
 
-        np.savetxt(f"eval-k-means-coresets-main/data/input/{self.results_filename}.csv", Z, delimiter=",")
-        sys.exit()
-        return reduced_matrix, weights
+        # Save data input for subprocess
+        print(f"Current working directory: {os.getcwd()}")
+        np.savetxt(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz", Z, delimiter=",")
+
+        algorithm_exe_path = "eval_k_means_coresets_main/gs/build/gs"
+        random_seed = gen2.generate_random_seed()
+        cmd = [
+            algorithm_exe_path,
+            f"{self.results_filename}",  # Dataset
+            pathlib.Path(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz"),  # Input path
+            str(10),  # Number of clusters
+            str(size),  # Coreset size
+            str(random_seed),  # Random Seed
+            "eval_k_means_coresets_main/data/output/",  # Output dir
+        ]
+
+        # Remove temporary result files
+        file = pathlib.Path("eval_k_means_coresets_main/data/output/results.txt.gz")
+        if file.exists():
+            file.unlink()
+        file = pathlib.Path("eval_k_means_coresets_main/data/output/done.out")
+        if file.exists():
+            file.unlink()
+
+        print(f"Launching experiment with command:\n '{cmd}'")
+        result = subprocess.run(
+            args=cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE
+        )
+        if result.returncode != 0:
+            print("Got an error from the C++ Process:")
+            print(result.returncode, result.stderr)
+            print(result.stdout)
+
+        # Load result file
+        selection = np.loadtxt("eval_k_means_coresets_main/data/output/results.txt.gz", delimiter=" ")
+        selection = selection[0:size, :]
+        return selection[:, 1:], selection[:, 0]
