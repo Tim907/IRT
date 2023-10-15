@@ -17,7 +17,7 @@ from sklearn.linear_model import SGDClassifier
 from . import optimizer, settings, datasets
 from .datasets import Dataset
 from .l2s_sampling import l2s_sampling
-from eval_k_means_coresets_main.xrun import gen2, go2
+from IRT.eval_k_means_coresets_main.xrun import gen2
 import pathlib
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -290,35 +290,25 @@ class SensitivitySamplingExperiment(BaseExperiment):
         # Save data input for subprocess
         print(f"Current working directory: {os.getcwd()}")
 
-        pathlib.Path("eval_k_means_coresets_main/data/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/input/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/output/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/queue/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/queue/completed/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/queue/discarded/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/queue/in-progress/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/data/queue/ready/").mkdir(exist_ok=True)
-        pathlib.Path("eval_k_means_coresets_main/experimental-results/").mkdir(exist_ok=True)
-
-        np.savetxt(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz", Z, delimiter=",")
-
-        algorithm_exe_path = "eval_k_means_coresets_main/gs/build/gs"
+        algorithm_exe_path = "IRT/eval_k_means_coresets_main/gs/build/gs"
         random_seed = gen2.generate_random_seed()
         cmd = [
             algorithm_exe_path,
             f"{self.results_filename}",  # Dataset
-            pathlib.Path(f"eval_k_means_coresets_main/data/input/{self.results_filename}.txt.gz"),  # Input path
+            pathlib.Path(f"IRT/eval_k_means_coresets_main/data/input/{self.results_filename}_{str(random_seed)}.txt.gz"),  # Input path
             str(10),  # Number of clusters
             str(size),  # Coreset size
             str(random_seed),  # Random Seed
-            "eval_k_means_coresets_main/data/output/",  # Output dir
+            "IRT/eval_k_means_coresets_main/data/output/",  # Output dir
         ]
 
+        np.savetxt(f"IRT/eval_k_means_coresets_main/data/input/{self.results_filename}_{str(random_seed)}.txt.gz", Z, delimiter=",")
+
         # Remove temporary result files
-        file = pathlib.Path("eval_k_means_coresets_main/data/output/results.txt.gz")
+        file = pathlib.Path(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz")
         if file.exists():
             file.unlink()
-        file = pathlib.Path("eval_k_means_coresets_main/data/output/done.out")
+        file = pathlib.Path(f"IRT/eval_k_means_coresets_main/data/output/done_{str(random_seed)}.out")
         if file.exists():
             file.unlink()
 
@@ -333,7 +323,15 @@ class SensitivitySamplingExperiment(BaseExperiment):
             print(result.stdout)
 
         # Load result file
-        selection = np.loadtxt("eval_k_means_coresets_main/data/output/results.txt.gz", delimiter=" ")
+        selection = np.loadtxt(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz", delimiter=" ")
+
+        # Remove temporary result files
+        file = pathlib.Path(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz")
+        if file.exists():
+            file.unlink()
+        file = pathlib.Path(f"IRT/eval_k_means_coresets_main/data/output/done_{str(random_seed)}.out")
+        if file.exists():
+            file.unlink()
 
         # Fill up to size with random columns
         weights = np.zeros(size)

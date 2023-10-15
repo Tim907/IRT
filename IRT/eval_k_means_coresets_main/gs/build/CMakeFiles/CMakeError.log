@@ -1,0 +1,28 @@
+Determining if the function sgemm_ exists failed with the following output:
+Change Dir: /media/sf_gemeinsamerOrdner/IRT/IRT/eval_k_means_coresets_main/gs/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/ninja cmTC_964c6 && [1/2] Building CXX object CMakeFiles/cmTC_964c6.dir/CheckFunctionExists.cxx.o
+[2/2] Linking CXX executable cmTC_964c6
+FAILED: cmTC_964c6 
+: && /usr/bin/c++ -DCHECK_FUNCTION_EXISTS=sgemm_  CMakeFiles/cmTC_964c6.dir/CheckFunctionExists.cxx.o -o cmTC_964c6   && :
+/usr/bin/ld: CMakeFiles/cmTC_964c6.dir/CheckFunctionExists.cxx.o: in function `main':
+CheckFunctionExists.cxx:(.text+0x14): undefined reference to `sgemm_'
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+
+
+Determining if the function cheev_ exists failed with the following output:
+Change Dir: /media/sf_gemeinsamerOrdner/IRT/IRT/eval_k_means_coresets_main/gs/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/ninja cmTC_f9b70 && [1/2] Building CXX object CMakeFiles/cmTC_f9b70.dir/CheckFunctionExists.cxx.o
+[2/2] Linking CXX executable cmTC_f9b70
+FAILED: cmTC_f9b70 
+: && /usr/bin/c++ -DCHECK_FUNCTION_EXISTS=cheev_  CMakeFiles/cmTC_f9b70.dir/CheckFunctionExists.cxx.o -o cmTC_f9b70  /usr/lib/x86_64-linux-gnu/libblas.so  -lm  -ldl && :
+/usr/bin/ld: CMakeFiles/cmTC_f9b70.dir/CheckFunctionExists.cxx.o: in function `main':
+CheckFunctionExists.cxx:(.text+0x14): undefined reference to `cheev_'
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+
+

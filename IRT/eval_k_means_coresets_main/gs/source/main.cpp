@@ -56,17 +56,17 @@ void svd()
   std::cout << "Done!";
 }
 
-void writeDoneFile(const std::string &outputDir)
+void writeDoneFile(const std::string &outputDir, int randomSeed)
 {
-    std::string outputFilePath = outputDir + "/done.out";
+    std::string outputFilePath = outputDir + "/done_" + std::to_string(randomSeed) + ".out";
     std::ofstream outData(outputFilePath, std::ifstream::out);
     outData << "done\n";
     outData.close();
 }
 
-void outputResultsToFile(const std::shared_ptr<blaze::DynamicMatrix<double>> originalDataPoints, const std::shared_ptr<coresets::Coreset> coreset, const std::string &outputDir)
+void outputResultsToFile(const std::shared_ptr<blaze::DynamicMatrix<double>> originalDataPoints, const std::shared_ptr<coresets::Coreset> coreset, const std::string &outputDir, int randomSeed)
 {
-  std::string outputFilePath = outputDir + "/results.txt.gz";
+  std::string outputFilePath = outputDir + "/results_" + std::to_string(randomSeed) + ".txt.gz";
 
   namespace io = boost::iostreams;
   std::ofstream fileStream(outputFilePath, std::ios_base::out | std::ios_base::binary);
@@ -76,153 +76,6 @@ void outputResultsToFile(const std::shared_ptr<blaze::DynamicMatrix<double>> ori
   std::ostream outData(&fos);
 
   coreset->writeToStream(*originalDataPoints, outData);
-}
-
-int main_alt(int argc, char **argv)
-{
-  if (argc < 8)
-  {
-    std::cout << "Usage: algorithm dataset k m seed output_path [low_data_path]" << std::endl;
-    std::cout << "  algorithm     = algorithm" << std::endl;
-    std::cout << "  dataset       = dataset name" << std::endl;
-    std::cout << "  data_path     = file path to dataset" << std::endl;
-    std::cout << "  k             = number of desired centers" << std::endl;
-    std::cout << "  m             = coreset size" << std::endl;
-    std::cout << "  seed          = random seed" << std::endl;
-    std::cout << "  output_dir    = path to output results" << std::endl;
-    std::cout << std::endl;
-    std::cout << "7 arguments expected, got " << argc - 1 << ":" << std::endl;
-    for (int i = 1; i < argc; ++i)
-      std::cout << " " << i << ": " << argv[i] << std::endl;
-    return 1;
-  }
-
-  std::string algorithmName(argv[1]);
-  std::string datasetName(argv[2]);
-  std::string dataFilePath(argv[3]);
-  size_t k = std::stoul(argv[4]);
-  size_t m = std::stoul(argv[5]);
-  int randomSeed = std::stoi(argv[6]);
-  std::string outputDir(argv[7]);
-
-  boost::algorithm::to_lower(algorithmName);
-  boost::algorithm::trim(algorithmName);
-
-  boost::algorithm::to_lower(datasetName);
-  boost::algorithm::trim(datasetName);
-
-  std::cout << "Running " << algorithmName << " with following parameters:\n";
-  std::cout << " - Dataset:       " << datasetName << "\n";
-  std::cout << " - Input path:    " << dataFilePath << "\n";
-  std::cout << " - Clusters:      " << k << "\n";
-  std::cout << " - Coreset size:  " << m << "\n";
-  std::cout << " - Random Seed:   " << randomSeed << "\n";
-  std::cout << " - Output dir:    " << outputDir << "\n";
-
-  std::cout << "Initializing randomess with random seed: " << randomSeed << "\n";
-  utils::Random::initialize(randomSeed);
-  
-  std::shared_ptr<IDataParser> dataParser;
-  if (datasetName == "census")
-  {
-    dataParser = std::make_shared<CensusParser>();
-  }
-  else if (datasetName == "covertype")
-  {
-    dataParser = std::make_shared<CovertypeParser>();
-  }
-  else if (
-    datasetName == "enron" ||
-    datasetName == "nytimes"
-  )
-  {
-    dataParser = std::make_shared<BagOfWordsParser>();
-  }
-  else if (datasetName == "tower")
-  {
-    dataParser = std::make_shared<TowerParser>();
-  }
-  else if (
-    datasetName.find("hardinstance") != std::string::npos ||
-    datasetName.find("lowd") != std::string::npos ||
-    datasetName == "caltech101" ||
-    datasetName == "nytimes100d"
-  )
-  {
-    dataParser = std::make_shared<CsvParser>();
-  }
-  else
-  {
-    //std::cout << "Unknown dataset: " << datasetName << "\n";
-    //return -1;
-    dataParser = std::make_shared<CsvParser>();
-  }
-
-  std::shared_ptr<blaze::DynamicMatrix<double>> data;
-  {
-    utils::StopWatch timeDataParsing(true);
-    std::cout << "Parsing data:" << std::endl;
-    data = dataParser->parse(dataFilePath);
-    std::cout << "Data parsed: " << data->rows() << " x " << data->columns() << " in "<< timeDataParsing.elapsedStr() << std::endl;
-  }
-
-  std::cout << "Begin coreset algorithm: " << algorithmName << "\n";
-  std::shared_ptr<coresets::Coreset> coreset;
-  utils::StopWatch timeCoresetComputation(true);
-
-  if (algorithmName == "basic-clustering")
-  {
-    coresets::BasicClustering algo(m);
-    coreset = algo.run(*data);
-  }
-  else if (algorithmName == "stream-km++")
-  {
-    coresets::StreamKMeans algo(m);
-    coreset = algo.run(*data);
-  }
-  else if (algorithmName == "sensitivity-sampling")
-  {
-    coresets::SensitivitySampling algo(2*k, m);
-    coreset = algo.run(*data);
-  }
-  else if (algorithmName == "group-sampling")
-  {
-    size_t beta = 10000;
-    size_t groupRangeSize = 4;
-    size_t minimumGroupSamplingSize = 1;
-    coresets::GroupSampling algo(2*k, m, beta, groupRangeSize, minimumGroupSamplingSize);
-    coreset = algo.run(*data);
-  }
-  else if (algorithmName == "ray-maker")
-  {
-    size_t maxNumberOfRaysPerCluster = 20;
-    coresets::RayMaker algo(2*k, m, maxNumberOfRaysPerCluster);
-    coreset = algo.run(*data);
-  }
-  else 
-  {
-    std::cout << "Unknown algorithm: " << algorithmName << "\n";
-    return -1;
-  }
-  
-  std::cout << "Algorithm completed in " << timeCoresetComputation.elapsedStr() << std::endl;
-
-  // if (useLowDimDataset)
-  // {
-  //   // We used low-dimensional data to compute the coreset.
-  //   // Get rid of the low-dimensional data and load the original data.
-  //   data->resize(0, 0, false);
-  //   data->shrinkToFit();
-
-  //   std::cout << "Parsing original data:\n";
-  //   utils::StopWatch timeDataParsing(true);
-  //   data = dataParser->parse(dataFilePath);
-  //   std::cout << "Data parsed: " << data->rows() << " x " << data->columns() << " in "<< timeDataParsing.elapsedStr() << ".\n";
-  // }
-
-  outputResultsToFile(data, coreset, outputDir);
-  writeDoneFile(outputDir);
-  return 0;
 }
 
 int main(int argc, char **argv)
@@ -289,8 +142,8 @@ int main(int argc, char **argv)
 
   std::cout << "Algorithm completed in " << timeCoresetComputation.elapsedStr() << std::endl;
 
-  outputResultsToFile(data, coreset, outputDir);
-  writeDoneFile(outputDir);
+  outputResultsToFile(data, coreset, outputDir, randomSeed);
+  writeDoneFile(outputDir, randomSeed);
 
   // if (useLowDimDataset)
   // {
@@ -409,7 +262,7 @@ int main_old() {
     { -1.3739725806942609F, 5.291631033113889F, },
     { -6.2539305108541825F, -7.108786009916786F, },
     { 0.08525185826796045F, 3.6452829679480585F, },
-    { 1.0F, -10.0F, }, 
+    { 1.0F, -10.0F, },
     { 6.0F, -16.0F, }, // Outlier point.
   };
 
@@ -452,7 +305,7 @@ int main_old() {
 
   // auto parser = CensusParser();
   // auto parsedData = parser.parse("data/input/USCensus1990.data.txt");
-  
+
 
   // auto parser = CovertypeParser();
   // auto parsedData = parser.parse("data/input/covtype.data.gz");
@@ -472,7 +325,7 @@ int main_old() {
   size_t maxNumberOfRaysPerCluster = 20;
   coresets::RayMaker rayMaker(k, T, maxNumberOfRaysPerCluster);
   auto coreset = rayMaker.run(data);
-  
+
   for (size_t i = 0; i < coreset->size(); i++)
   {
     auto point = coreset->at(i);
@@ -482,7 +335,7 @@ int main_old() {
 
   // std::cout << "Hello world!\n";
 
-  // 
+  //
   // std::vector<double> y = {1.0};
   // size_t length = x.size();
   // // size_t k = 10;
@@ -498,7 +351,7 @@ int main_old() {
   // // std::vector<double> sizes(maxK);
   // // std::vector<double> centers(maxK);
   // // std::vector<double> withinss(maxK);
-  
+
   // // double * center_p (centers.data()), * sp (sizes.data());
   // // double * bp (BIC.data()), * wp (withinss.data());
   // // int * cluster_p (clusters.data());

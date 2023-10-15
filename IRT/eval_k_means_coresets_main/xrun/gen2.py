@@ -35,7 +35,7 @@ KNOWN_DATASETS = [
     "nytimespcalowd",
 ]
 
-MT_PATH = "eval_k_means_coresets_main/mt/bin/mt.exe"
+MT_PATH = "IRT/eval_k_means_coresets_main/mt/bin/mt.exe"
 
 
 def generate_random_seed() -> int:

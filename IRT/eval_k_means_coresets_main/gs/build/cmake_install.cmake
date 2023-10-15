@@ -1,4 +1,4 @@
-# Install script for directory: /media/sf_gemeinsamerOrdner/IRT/eval_k_means_coresets_main/gs
+# Install script for directory: /media/sf_gemeinsamerOrdner/IRT/IRT/eval_k_means_coresets_main/gs
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/media/sf_gemeinsamerOrdner/IRT/eval_k_means_coresets_main/gs/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/media/sf_gemeinsamerOrdner/IRT/IRT/eval_k_means_coresets_main/gs/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
