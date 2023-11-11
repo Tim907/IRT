@@ -19,6 +19,8 @@ from .datasets import Dataset
 from .l2s_sampling import l2s_sampling
 from IRT.eval_k_means_coresets_main.xrun import gen2
 import pathlib
+from scipy.sparse import diags
+from scipy.stats import expon
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -263,7 +265,6 @@ class UniformSamplingExperiment(BaseExperiment):
         )
 
     def get_reduced_matrix_and_weights(self, Z, size):
-        print(Z.shape[0])
         reduced_matrix = np.random.choice(Z.shape[0], size=size, replace=False)
         weights = np.ones(size)
         # reduced_matrix is only a vector of indexes!!!
@@ -342,3 +343,113 @@ class SensitivitySamplingExperiment(BaseExperiment):
         reduced_matrix = np.concatenate((selection[:, 1].astype(int), reduced_matrix))[0:size]
 
         return reduced_matrix, weights
+
+
+
+class L1LewisSamplingExperiment(BaseExperiment):
+    def __init__(
+            self,
+            dataset: Dataset,
+            results_filename,
+            sizes,
+            num_runs,
+            fast_approx
+    ):
+        super().__init__(
+            num_runs=num_runs,
+            sizes=sizes,
+            dataset=dataset,
+            results_filename=results_filename
+        )
+        self.fast_approx = fast_approx
+
+    def fast_QR(self, X, p):
+        """
+        Returns Q of a fast QR decomposition of X.
+        """
+        n, d = X.shape
+
+        if p <= 2:
+            sketch_size = d ** 2
+        else:
+            sketch_size = np.maximum(d ** 2, int(np.power(n, 1 - 2 / p)))
+
+        f = np.random.randint(sketch_size, size=n)
+        g = np.random.randint(2, size=n) * 2 - 1
+        if p != 2:
+            lamb = expon.rvs(size=n)
+
+        # init the sketch
+        X_sketch = np.zeros((sketch_size, d))
+        if p == 2:
+            for i in range(n):
+                X_sketch[f[i]] += g[i] * X[i]
+        else:
+            for i in range(n):
+                X_sketch[f[i]] += g[i] / np.power(lamb[i], 1 / p) * X[i]  # exponential-verteile Zufallsvariable
+
+        R = np.linalg.qr(X_sketch, mode="r")
+        R_inv = np.linalg.inv(R)
+
+        if p == 2:  # hier wird es noch verschnellert
+            k = 20
+            g = np.random.normal(loc=0, scale=1 / np.sqrt(k), size=(R_inv.shape[1], k))
+            r = np.dot(R_inv, g)
+            Q = np.dot(X, r)
+        else:  # normalfall, der immer richtig ist
+            Q = np.dot(X, R_inv)
+
+        return Q
+
+    def _calculate_lev_score_exact(self, X):
+        Xt = X.T
+        XXinv = np.linalg.pinv(Xt.dot(X))
+        lev = np.zeros(X.shape[0])
+        for i in range(X.shape[0]):
+            xi = X[i: i + 1, :]
+            lev[i] = (xi.dot(XXinv)).dot(xi.T)
+        return lev
+
+    def _calculate_lewis_weights_exact(self, X, T=10):
+        n = X.shape[0]
+        w = np.ones(n)
+
+        for i in range(T):
+            Wp = diags(np.power(w, -0.5))
+            # Q = qr(Wp.dot(X))
+            # s = _calculate_sensitivities_leverage(Q)
+            s = self._calculate_lev_score_exact(Wp.dot(X))
+            w_nxt = np.power(w * s, 0.5)
+            # print("|w_t - w_t+1|/|w_t| = ", np.linalg.norm(w - w_nxt) / np.linalg.norm(w))
+            w = w_nxt
+
+        return np.array(w + 1.0 / n, dtype=float)
+
+    def _calculate_lewis_weights_fast(self, X, T=10):
+        n = X.shape[0]
+        w = np.ones(n)
+
+        for i in range(T):
+            # assert min(w) > 0, str(min(w))
+            Wp = diags(np.power(w, -0.5))
+
+            Q = self.fast_QR(Wp.dot(X), p=1)
+            s = np.power(np.linalg.norm(Q, axis=1, ord=2), 2)
+            w_nxt = np.power(w * s, 0.5)
+            # print("|w_t - w_t+1|/|w_t| = ", npl.norm(w - w_nxt) / npl.norm(w))
+            w = w_nxt
+
+        return np.array(w + 1.0 / n, dtype=float)
+
+    def get_reduced_matrix_and_weights(self, Z, size):
+
+        if self.fast_approx:
+            s = self._calculate_lewis_weights_fast(Z)
+        else:
+            s = self._calculate_lewis_weights_exact(Z)
+        # calculate probabilities
+        p = s / np.sum(s)
+        # draw the sample
+        sample_indices = np.random.choice(Z.shape[0], size=size, replace=False, p=p)
+
+        return sample_indices, np.ones(size)
