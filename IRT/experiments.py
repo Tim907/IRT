@@ -296,14 +296,17 @@ class SensitivitySamplingExperiment(BaseExperiment):
         cmd = [
             algorithm_exe_path,
             f"{self.results_filename}",  # Dataset
-            pathlib.Path(f"IRT/eval_k_means_coresets_main/data/input/{self.results_filename}_{str(random_seed)}.txt.gz"),  # Input path
+            pathlib.Path(
+                f"IRT/eval_k_means_coresets_main/data/input/{self.results_filename}_{str(random_seed)}.txt.gz"),
+            # Input path
             str(10),  # Number of clusters
             str(size),  # Coreset size
             str(random_seed),  # Random Seed
             "IRT/eval_k_means_coresets_main/data/output/",  # Output dir
         ]
 
-        np.savetxt(f"IRT/eval_k_means_coresets_main/data/input/{self.results_filename}_{str(random_seed)}.txt.gz", Z, delimiter=",")
+        np.savetxt(f"IRT/eval_k_means_coresets_main/data/input/{self.results_filename}_{str(random_seed)}.txt.gz", Z,
+                   delimiter=",")
 
         # Remove temporary result files
         file = pathlib.Path(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz")
@@ -324,7 +327,8 @@ class SensitivitySamplingExperiment(BaseExperiment):
             print(result.stdout)
 
         # Load result file
-        selection = np.loadtxt(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz", delimiter=" ")
+        selection = np.loadtxt(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz",
+                               delimiter=" ")
 
         # Remove temporary result files
         file = pathlib.Path(f"IRT/eval_k_means_coresets_main/data/output/results_{str(random_seed)}.txt.gz")
@@ -343,7 +347,6 @@ class SensitivitySamplingExperiment(BaseExperiment):
         reduced_matrix = np.concatenate((selection[:, 1].astype(int), reduced_matrix))[0:size]
 
         return reduced_matrix, weights
-
 
 
 class L1LewisSamplingExperiment(BaseExperiment):
@@ -453,3 +456,104 @@ class L1LewisSamplingExperiment(BaseExperiment):
         sample_indices = np.random.choice(Z.shape[0], size=size, replace=False, p=p)
 
         return sample_indices, np.ones(size)
+
+
+class L1LeverageScoreExperiment(BaseExperiment):
+    def __init__(
+            self,
+            dataset: Dataset,
+            results_filename,
+            sizes,
+            num_runs,
+            fast_approx
+    ):
+        super().__init__(
+            num_runs=num_runs,
+            sizes=sizes,
+            dataset=dataset,
+            results_filename=results_filename
+        )
+        self.fast_approx = fast_approx
+
+    def fast_QR(self, X, p=1):
+        """
+        Returns Q of a fast QR decomposition of X.
+        """
+        n, d = X.shape
+
+        if p <= 2:
+            sketch_size = d ** 2
+        else:
+            sketch_size = np.maximum(d ** 2, int(np.power(n, 1 - 2 / p)))
+
+        f = np.random.randint(sketch_size, size=n)
+        g = np.random.randint(2, size=n) * 2 - 1
+        if p != 2:
+            lamb = expon.rvs(size=n)
+
+        # init the sketch
+        X_sketch = np.zeros((sketch_size, d))
+        if p == 2:
+            for i in range(n):
+                X_sketch[f[i]] += g[i] * X[i]
+        else:
+            for i in range(n):
+                X_sketch[f[i]] += g[i] / np.power(lamb[i], 1 / p) * X[i]  # exponential-verteile Zufallsvariable
+
+        R = np.linalg.qr(X_sketch, mode="r")
+        R_inv = np.linalg.inv(R)
+
+        if p == 2:  # hier wird es noch verschnellert
+            k = 20
+            g = np.random.normal(loc=0, scale=1 / np.sqrt(k), size=(R_inv.shape[1], k))
+            r = np.dot(R_inv, g)
+            Q = np.dot(X, r)
+        else:  # normalfall, der immer richtig ist
+            Q = np.dot(X, R_inv)
+        return Q
+
+    def compute_leverage_scores(self, X: np.ndarray, p=1, fast_approx=True):
+        """
+            Computes leverage scores.
+        """
+        if not len(X.shape) == 2:
+            raise ValueError("X must be 2D!")
+
+        if not fast_approx:  # boolean, schnellere oder nicht die schnellere Q-R-Zerlegung
+            Q, *_ = np.linalg.qr(X)
+        else:
+            Q = self.fast_QR(X, p=p)  # ein Möglichkeit wie man eine Zerlegung schneller machen kann
+
+        leverage_scores = np.power(np.linalg.norm(Q, axis=1, ord=p), p)
+
+        return leverage_scores
+
+    def _round_up(self, x: np.ndarray) -> np.ndarray:
+        """
+        Rounds each element in x up to the nearest power of two.
+        """
+        if not np.all(x >= 0):
+            raise ValueError("All elements of x must be greater than zero!")
+
+        greater_zero = x > 0
+
+        results = x.copy()
+        results[greater_zero] = np.power(2, np.ceil(np.log2(x[greater_zero])))
+        return results
+
+    def get_reduced_matrix_and_weights(self, Z, size):
+        augmented = False
+        round_up = False
+        leverage_scores = self.compute_leverage_scores(Z, p=1, fast_approx=self.fast_approx)
+
+        if augmented:
+            leverage_scores = leverage_scores + 1 / Z.shape[0]
+
+        if round_up:
+            leverage_scores = self._round_up(leverage_scores)
+
+        p = leverage_scores / np.sum(leverage_scores)
+        w = 1 / (p * size)
+        sample_indices = np.random.choice(Z.shape[0], size=size, replace=False, p=p)
+
+        return sample_indices, w[sample_indices]

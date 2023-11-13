@@ -58,5 +58,13 @@ def run_experiments(dataset: Dataset, num_runs, sizes, add=False, ThreePL=False)
             fast_approx=True
         )
 
+        # experiment = L1LewisSamplingExperiment(
+        #     dataset,
+        #     results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
+        #     sizes=sizes,
+        #     num_runs=1,
+        #     fast_approx=True
+        # )
+
         experiment.run(parallel=False, add=add, ThreePL=ThreePL)
     
