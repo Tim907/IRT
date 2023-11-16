@@ -4,7 +4,8 @@ from . import settings
 from . import optimizer
 from .datasets import Dataset
 from .experiments import (
-    L2SExperiment, UniformSamplingExperiment, SensitivitySamplingExperiment, L1LewisSamplingExperiment
+    L2SExperiment, UniformSamplingExperiment, SensitivitySamplingExperiment, L1LewisSamplingExperiment,
+    L1LeverageScoreExperiment
 )
 
 logger = logging.getLogger(settings.LOGGER_NAME)
@@ -54,11 +55,10 @@ def run_experiments(dataset: Dataset, num_runs, sizes, add=False, ThreePL=False)
             dataset,
             results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
             sizes=sizes,
-            num_runs=1,
-            fast_approx=True
+            num_runs=1
         )
 
-        # experiment = L1LewisSamplingExperiment(
+        # experiment = L1LeverageScoreExperiment(
         #     dataset,
         #     results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
         #     sizes=sizes,

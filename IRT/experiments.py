@@ -350,13 +350,16 @@ class SensitivitySamplingExperiment(BaseExperiment):
 
 
 class L1LewisSamplingExperiment(BaseExperiment):
+    """
+    https://github.com/chr-peters/efficient-probit-regression/blob/main/efficient_probit_regression/lewis_sampling.py
+    """
+
     def __init__(
             self,
             dataset: Dataset,
             results_filename,
             sizes,
-            num_runs,
-            fast_approx
+            num_runs
     ):
         super().__init__(
             num_runs=num_runs,
@@ -364,7 +367,6 @@ class L1LewisSamplingExperiment(BaseExperiment):
             dataset=dataset,
             results_filename=results_filename
         )
-        self.fast_approx = fast_approx
 
     def fast_QR(self, X, p):
         """
@@ -394,39 +396,8 @@ class L1LewisSamplingExperiment(BaseExperiment):
         R = np.linalg.qr(X_sketch, mode="r")
         R_inv = np.linalg.inv(R)
 
-        if p == 2:  # hier wird es noch verschnellert
-            k = 20
-            g = np.random.normal(loc=0, scale=1 / np.sqrt(k), size=(R_inv.shape[1], k))
-            r = np.dot(R_inv, g)
-            Q = np.dot(X, r)
-        else:  # normalfall, der immer richtig ist
-            Q = np.dot(X, R_inv)
-
+        Q = np.dot(X, R_inv)
         return Q
-
-    def _calculate_lev_score_exact(self, X):
-        Xt = X.T
-        XXinv = np.linalg.pinv(Xt.dot(X))
-        lev = np.zeros(X.shape[0])
-        for i in range(X.shape[0]):
-            xi = X[i: i + 1, :]
-            lev[i] = (xi.dot(XXinv)).dot(xi.T)
-        return lev
-
-    def _calculate_lewis_weights_exact(self, X, T=10):
-        n = X.shape[0]
-        w = np.ones(n)
-
-        for i in range(T):
-            Wp = diags(np.power(w, -0.5))
-            # Q = qr(Wp.dot(X))
-            # s = _calculate_sensitivities_leverage(Q)
-            s = self._calculate_lev_score_exact(Wp.dot(X))
-            w_nxt = np.power(w * s, 0.5)
-            # print("|w_t - w_t+1|/|w_t| = ", np.linalg.norm(w - w_nxt) / np.linalg.norm(w))
-            w = w_nxt
-
-        return np.array(w + 1.0 / n, dtype=float)
 
     def _calculate_lewis_weights_fast(self, X, T=10):
         n = X.shape[0]
@@ -436,7 +407,7 @@ class L1LewisSamplingExperiment(BaseExperiment):
             # assert min(w) > 0, str(min(w))
             Wp = diags(np.power(w, -0.5))
 
-            Q = self.fast_QR(Wp.dot(X), p=1)
+            Q = self.fast_QR(Wp.dot(X), p=2)
             s = np.power(np.linalg.norm(Q, axis=1, ord=2), 2)
             w_nxt = np.power(w * s, 0.5)
             # print("|w_t - w_t+1|/|w_t| = ", npl.norm(w - w_nxt) / npl.norm(w))
@@ -445,20 +416,22 @@ class L1LewisSamplingExperiment(BaseExperiment):
         return np.array(w + 1.0 / n, dtype=float)
 
     def get_reduced_matrix_and_weights(self, Z, size):
+        s = self._calculate_lewis_weights_fast(Z)
 
-        if self.fast_approx:
-            s = self._calculate_lewis_weights_fast(Z)
-        else:
-            s = self._calculate_lewis_weights_exact(Z)
         # calculate probabilities
         p = s / np.sum(s)
-        # draw the sample
+        w = 1 / (p * size)
         sample_indices = np.random.choice(Z.shape[0], size=size, replace=False, p=p)
 
-        return sample_indices, np.ones(size)
+        return sample_indices, w[sample_indices]
+
 
 
 class L1LeverageScoreExperiment(BaseExperiment):
+    """
+    https://github.com/chr-peters/efficient-probit-regression/blob/main/efficient_probit_regression/sampling.py
+    """
+
     def __init__(
             self,
             dataset: Dataset,
@@ -503,13 +476,7 @@ class L1LeverageScoreExperiment(BaseExperiment):
         R = np.linalg.qr(X_sketch, mode="r")
         R_inv = np.linalg.inv(R)
 
-        if p == 2:  # hier wird es noch verschnellert
-            k = 20
-            g = np.random.normal(loc=0, scale=1 / np.sqrt(k), size=(R_inv.shape[1], k))
-            r = np.dot(R_inv, g)
-            Q = np.dot(X, r)
-        else:  # normalfall, der immer richtig ist
-            Q = np.dot(X, R_inv)
+        Q = np.dot(X, R_inv)
         return Q
 
     def compute_leverage_scores(self, X: np.ndarray, p=1, fast_approx=True):
@@ -528,30 +495,12 @@ class L1LeverageScoreExperiment(BaseExperiment):
 
         return leverage_scores
 
-    def _round_up(self, x: np.ndarray) -> np.ndarray:
-        """
-        Rounds each element in x up to the nearest power of two.
-        """
-        if not np.all(x >= 0):
-            raise ValueError("All elements of x must be greater than zero!")
-
-        greater_zero = x > 0
-
-        results = x.copy()
-        results[greater_zero] = np.power(2, np.ceil(np.log2(x[greater_zero])))
-        return results
 
     def get_reduced_matrix_and_weights(self, Z, size):
-        augmented = False
-        round_up = False
         leverage_scores = self.compute_leverage_scores(Z, p=1, fast_approx=self.fast_approx)
+        leverage_scores = leverage_scores + 1 / Z.shape[0]
 
-        if augmented:
-            leverage_scores = leverage_scores + 1 / Z.shape[0]
-
-        if round_up:
-            leverage_scores = self._round_up(leverage_scores)
-
+        # calculate probabilities
         p = leverage_scores / np.sum(leverage_scores)
         w = 1 / (p * size)
         sample_indices = np.random.choice(Z.shape[0], size=size, replace=False, p=p)
