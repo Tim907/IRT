@@ -1,18 +1,12 @@
 import abc
-import csv
-import io
 import logging
 import math
 import os
-from io import StringIO
 from time import perf_counter
 
 import subprocess
 import numpy as np
 import pandas as pd
-import scipy.stats
-from joblib import Parallel, delayed
-from sklearn.linear_model import SGDClassifier
 
 from . import optimizer, settings, datasets
 from .datasets import Dataset
@@ -55,7 +49,7 @@ class BaseExperiment(abc.ABC):
 
         return grid
 
-    def IRT(self, X, ThreePL=False, config=None):
+    def IRT(self, X, threePL=False, config=None):
         n = X.shape[1]  # number of students
         m = X.shape[0]  # number of items
         logger.info(f"Running IRT with {n} students and {m} items.")
@@ -76,7 +70,7 @@ class BaseExperiment(abc.ABC):
         # Beta = np.vstack((scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75), np.ones(X.shape[0]) * 0.851)).T
         # Beta = np.vstack((np.ones(X.shape[0]) * 0.851, scipy.stats.norm.ppf(((X+1)/2).mean(axis=1)) * 1.702 / np.sqrt(0.75))).T
         Beta = np.vstack((np.ones(X.shape[0]) * 2.75, np.zeros(X.shape[0]))).T
-        if ThreePL is True:
+        if threePL is True:
             # append third column with c
             Beta = np.hstack((Beta, 0.25 * np.ones((Beta.shape[0], 1))))
 
@@ -90,8 +84,7 @@ class BaseExperiment(abc.ABC):
         bestAlpha = None
         bestBeta = None
         runtimes_df = pd.DataFrame(columns=['Alpha', 'Beta'])
-        for iteration in range(
-                5):  ###############################  here the number of iterations is set  ##############
+        for iteration in range(5):  # here the number of iterations is set
             sumCost = 0
             weights = None
             coreset = None
@@ -116,7 +109,7 @@ class BaseExperiment(abc.ABC):
                     y = X[:, i]
                     Z = datasets.make_Z(Beta[:, 0:2], y)  # without third column of c's
 
-                if ThreePL is True:
+                if threePL is True:
                     if config is not None:
                         c = Beta_core[:, 2]
                     else:
@@ -128,7 +121,6 @@ class BaseExperiment(abc.ABC):
                 Alpha[i,] = opt.x
                 sumCost += opt.fun
 
-            # print(Alpha[:,0])
             # Alpha[:,0] = (Alpha[:,0] - np.mean(Alpha[:,0])) / (np.std(Alpha[:,0])+0.01)
             t1_stop = perf_counter()
             print("######## Alpha Running time (s):", t1_stop - t1_start)
@@ -152,7 +144,7 @@ class BaseExperiment(abc.ABC):
                     y = X[i, :]
                     Z = datasets.make_Z(Alpha, y)
 
-                if ThreePL is True:
+                if threePL is True:
                     # c = Beta[i, 2]
                     opt = optimizer.optimize_3PL(Z, y=y, c=None, opt_beta=True, w=weights,
                                                  bnds=((0, 5), (-6, 6), (0.001, 0.499)), theta_init=Beta[i, :])
@@ -207,20 +199,20 @@ class BaseExperiment(abc.ABC):
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Beta.csv", header=False, index=False)
         # df = pd.DataFrame(X)
         # df.to_csv(settings.RESULTS_DIR / f"{result_filename}_data.csv", header=False, index=False)
-        # I have turned off the saving of Data.csv
+        # TODO I have turned off the saving of Data.csv
         runtimes_df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha_Beta_runtime.csv", header=False,
                            index=False)
 
-    def run(self, parallel=False, n_jobs=-3, add=False, ThreePL=False):
+    def run(self, threePL=False):
         X = self.dataset.get_X()
         logger.info("Computing IRT on full dataset...")
-        self.IRT(X, ThreePL=ThreePL)
+        self.IRT(X, threePL=threePL)
 
         logger.info("Running experiments...")
 
         def job_function(cur_config):
             logger.info(f"Current experimental config: {cur_config}")
-            self.IRT(X, ThreePL=ThreePL, config=cur_config)
+            self.IRT(X, threePL=threePL, config=cur_config)
 
         for cur_config in self.get_config_grid():
             job_function(cur_config)
@@ -245,7 +237,7 @@ class L2SExperiment(BaseExperiment):
 
     def get_reduced_matrix_and_weights(self, Z, size):
         reduced_matrix, weights = l2s_sampling(Z, size=size)
-        # reduced_matrix is only a vector of indexes!!!
+        # reduced_matrix is only a vector of indexes!
         return reduced_matrix, weights
 
 
@@ -267,7 +259,7 @@ class UniformSamplingExperiment(BaseExperiment):
     def get_reduced_matrix_and_weights(self, Z, size):
         reduced_matrix = np.random.choice(Z.shape[0], size=size, replace=False)
         weights = np.ones(size)
-        # reduced_matrix is only a vector of indexes!!!
+        # reduced_matrix is only a vector of indexes!
         return reduced_matrix, weights
 
 
@@ -349,6 +341,41 @@ class SensitivitySamplingExperiment(BaseExperiment):
         return reduced_matrix, weights
 
 
+
+
+
+def fast_QR(X, p=1):
+    """
+    Returns Q of a fast QR decomposition of X.
+    From https://github.com/chr-peters/efficient-probit-regression/blob/main/efficient_probit_regression/sampling.py
+    """
+    n, d = X.shape
+
+    if p <= 2:
+        sketch_size = d ** 2
+    else:
+        sketch_size = np.maximum(d ** 2, int(np.power(n, 1 - 2 / p)))
+
+    f = np.random.randint(sketch_size, size=n)
+    g = np.random.randint(2, size=n) * 2 - 1
+    if p != 2:
+        lamb = expon.rvs(size=n)
+
+    # init the sketch
+    X_sketch = np.zeros((sketch_size, d))
+    if p == 2:
+        for i in range(n):
+            X_sketch[f[i]] += g[i] * X[i]
+    else:
+        for i in range(n):
+            X_sketch[f[i]] += g[i] / np.power(lamb[i], 1 / p) * X[i]  # exponential distributed random variable
+
+    R = np.linalg.qr(X_sketch, mode="r")
+    R_inv = np.linalg.inv(R)
+
+    Q = np.dot(X, R_inv)
+    return Q
+
 class L1LewisSamplingExperiment(BaseExperiment):
     """
     https://github.com/chr-peters/efficient-probit-regression/blob/main/efficient_probit_regression/lewis_sampling.py
@@ -368,37 +395,6 @@ class L1LewisSamplingExperiment(BaseExperiment):
             results_filename=results_filename
         )
 
-    def fast_QR(self, X, p):
-        """
-        Returns Q of a fast QR decomposition of X.
-        """
-        n, d = X.shape
-
-        if p <= 2:
-            sketch_size = d ** 2
-        else:
-            sketch_size = np.maximum(d ** 2, int(np.power(n, 1 - 2 / p)))
-
-        f = np.random.randint(sketch_size, size=n)
-        g = np.random.randint(2, size=n) * 2 - 1
-        if p != 2:
-            lamb = expon.rvs(size=n)
-
-        # init the sketch
-        X_sketch = np.zeros((sketch_size, d))
-        if p == 2:
-            for i in range(n):
-                X_sketch[f[i]] += g[i] * X[i]
-        else:
-            for i in range(n):
-                X_sketch[f[i]] += g[i] / np.power(lamb[i], 1 / p) * X[i]  # exponential-verteile Zufallsvariable
-
-        R = np.linalg.qr(X_sketch, mode="r")
-        R_inv = np.linalg.inv(R)
-
-        Q = np.dot(X, R_inv)
-        return Q
-
     def _calculate_lewis_weights_fast(self, X, T=10):
         n = X.shape[0]
         w = np.ones(n)
@@ -407,10 +403,9 @@ class L1LewisSamplingExperiment(BaseExperiment):
             # assert min(w) > 0, str(min(w))
             Wp = diags(np.power(w, -0.5))
 
-            Q = self.fast_QR(Wp.dot(X), p=2)
+            Q = fast_QR(Wp.dot(X), p=2)
             s = np.power(np.linalg.norm(Q, axis=1, ord=2), 2)
             w_nxt = np.power(w * s, 0.5)
-            # print("|w_t - w_t+1|/|w_t| = ", npl.norm(w - w_nxt) / npl.norm(w))
             w = w_nxt
 
         return np.array(w + 1.0 / n, dtype=float)
@@ -448,36 +443,6 @@ class L1LeverageScoreExperiment(BaseExperiment):
         )
         self.fast_approx = fast_approx
 
-    def fast_QR(self, X, p=1):
-        """
-        Returns Q of a fast QR decomposition of X.
-        """
-        n, d = X.shape
-
-        if p <= 2:
-            sketch_size = d ** 2
-        else:
-            sketch_size = np.maximum(d ** 2, int(np.power(n, 1 - 2 / p)))
-
-        f = np.random.randint(sketch_size, size=n)
-        g = np.random.randint(2, size=n) * 2 - 1
-        if p != 2:
-            lamb = expon.rvs(size=n)
-
-        # init the sketch
-        X_sketch = np.zeros((sketch_size, d))
-        if p == 2:
-            for i in range(n):
-                X_sketch[f[i]] += g[i] * X[i]
-        else:
-            for i in range(n):
-                X_sketch[f[i]] += g[i] / np.power(lamb[i], 1 / p) * X[i]  # exponential-verteile Zufallsvariable
-
-        R = np.linalg.qr(X_sketch, mode="r")
-        R_inv = np.linalg.inv(R)
-
-        Q = np.dot(X, R_inv)
-        return Q
 
     def compute_leverage_scores(self, X: np.ndarray, p=1, fast_approx=True):
         """
@@ -486,10 +451,10 @@ class L1LeverageScoreExperiment(BaseExperiment):
         if not len(X.shape) == 2:
             raise ValueError("X must be 2D!")
 
-        if not fast_approx:  # boolean, schnellere oder nicht die schnellere Q-R-Zerlegung
+        if not fast_approx:
             Q, *_ = np.linalg.qr(X)
         else:
-            Q = self.fast_QR(X, p=p)  # ein Möglichkeit wie man eine Zerlegung schneller machen kann
+            Q = fast_QR(X, p=p)
 
         leverage_scores = np.power(np.linalg.norm(Q, axis=1, ord=p), p)
 

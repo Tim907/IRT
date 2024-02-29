@@ -66,5 +66,5 @@ def run_experiments(dataset: Dataset, num_runs, sizes, add=False, ThreePL=False)
         #     fast_approx=True
         # )
 
-        experiment.run(parallel=False, add=add, ThreePL=ThreePL)
+        experiment.run(threePL=ThreePL)
     

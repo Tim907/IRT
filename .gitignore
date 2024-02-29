@@ -3,3 +3,4 @@ build
 .idea
 eval_k_means_coresets_main/boost_*
 eval_k_means_coresets_main/cmake-*
+**/__pycache__

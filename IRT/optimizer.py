@@ -49,13 +49,13 @@ def only_keep_k(vec, block_size, k, max_len=None, biggest=True):
 @jit(nopython=True)
 def calc(v):
     if v < 34:
-        "prevent underflow exception"
+        # prevent underflow error
         if(v < -200): 
             return np.exp(-200)
 
         return np.log1p(np.exp(v))
     else:
-        "function becomes linear"
+        # function becomes linear
         return v
 
 
@@ -89,9 +89,9 @@ def logistic_likelihood_3PL(theta, Z, y, c, opt_beta, weights=None, block_size=N
             likelihood = likelihood - sum(np.log(1 - c[y == -1])) - sum(np.logaddexp(np.log(c[y == 1]), v_pos))
 
     if opt_beta:
-        likelihood = likelihood + prior_likelihood(theta[0], theta[1], theta[2], np.sqrt(sum(weights))/10) #1/sum(weights)*
+        likelihood = likelihood + prior_likelihood(theta[0], theta[1], theta[2], np.sqrt(sum(weights))/10)
     else:
-        likelihood = likelihood + prior_likelihood(2.75, theta[0], 0.1, np.sqrt(sum(weights))/10) #1/sum(weights)* was 10 put 5
+        likelihood = likelihood + prior_likelihood(2.75, theta[0], 0.1, np.sqrt(sum(weights))/10)
     return likelihood
     
 
@@ -140,14 +140,6 @@ def logistic_likelihood_grad_3PL(
     
     return grad
 
-"""
-def logistic_likelihood(theta, y, weights):
-    return np.sum(np.log1p(np.exp(-y * np.matmul(theta, weights))))
-
-def logistic_likelihood_grad(theta, y, weights):
-    temp = np.outer(1.0 / (1.0 + np.exp(-y * np.matmul(theta, weights))) * np.exp(-y*np.matmul(theta, weights)), np.inner(-y, weights))
-    return temp.sum(axis=0)
-"""
 
 def optimize_2PL(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
     """
@@ -169,10 +161,8 @@ def optimize_2PL(Z, w=None, block_size=None, k=None, max_len=None, bnds=None, th
 
 
 def prior_likelihood(a, b, c, d):
-#    return np.sum((c - 0.1)**2 / (0.08 / 3))
     return d*(np.sum((a - 2.75)**2 / (0.72 / 3)) + np.sum((b)**2 / (8 / 3)) + np.sum((c - 0.1)**2 / (0.08 / (3*10)))) #see also up the changes
 def prior_gradient(a, b, c, d):
-#    return np.sum((c - 0.1) / (0.04 / 3))
     return d*(np.sum(2*(a - 2.75) / (0.72 / 3)) + np.sum(2*(b) / (8 / 3)) + np.sum(2*(c - 0.1) / (0.08 / (3*10)))) #the last factor (10) is additional weight for the prior C
 
 def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=None, bnds=None, theta_init=None):
@@ -187,14 +177,12 @@ def optimize_3PL(Z, y, c, opt_beta, w=None, block_size=None, k=None, max_len=Non
 
     def gradient(theta):
         temp = logistic_likelihood_grad_3PL(theta, Z, y, c, opt_beta, w, block_size=block_size, k=k, max_len=max_len)
-        #print(temp)
         return temp
 
     if theta_init is None:
         theta_init = np.zeros(Z.shape[1])
 
     temp = so.minimize(objective_function, theta_init, method="L-BFGS-B", jac=gradient, bounds=bnds)
-    #temp = so.minimize(objective_function, theta_init, method="Nelder-Mead", bounds=bnds)
     if np.isnan(temp.fun):
         raise ValueError("likelihood is nan")
     return temp
