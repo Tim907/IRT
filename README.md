@@ -1,6 +1,8 @@
-# Logistic Item Response Theory (IRT)
+# Scalable Learning of Item Response Theory Models
 
-This is the accompanying code repository for ...
+This is the accompanying code repository for the AISTATS 2024 publication "**Scalable Learning of Item Response Theory Models**" by **Susanne Frick**, **Amer Krivošija** and **Alexander Munteanu**.
+
+The complete version of the paper is in ArXiv: https://arxiv.org/abs/2403.00680
 
 ## How to install
 
