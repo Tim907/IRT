@@ -26,24 +26,23 @@ def run_experiments(dataset: Dataset, num_runs, sizes, add=False, ThreePL=False)
 
         logger.info("Starting IRT experiment number " + f"{rrr}")
         
-        # #next block is used if the "coreset" is obtained via uniform sampling
+        # #next block is used if the "coreset" is obtained via uniform sampling (cf. Chapter C in paper)
         # experiment = UniformSamplingExperiment(
            # dataset,
            # results_filename= f"{dataset.get_name()}_uni" + f"_{rrr}",
            # sizes=sizes,
            # num_runs=1,
         # )
-        # experiment.run(parallel=False, add=add, ThreePL=ThreePL)
         
         #next block is used if our coreset is to be constructed
-        # experiment = L2SExperiment(
-            # dataset,
-            # results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
-            # sizes=sizes,
-            # num_runs=1,
-        # )
-        # experiment.run(parallel=False, add=add, ThreePL=ThreePL)
+        experiment = L2SExperiment(
+            dataset,
+            results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
+            sizes=sizes,
+            num_runs=1,
+        )
 
+        # #next block is used if Clustering Coresets with Sensitivity Sampling are used (cf. Chapter D in paper)
         # experiment = SensitivitySamplingExperiment(
         #     dataset,
         #     results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
@@ -51,13 +50,15 @@ def run_experiments(dataset: Dataset, num_runs, sizes, add=False, ThreePL=False)
         #     num_runs=1,
         # )
 
-        experiment = L1LewisSamplingExperiment(
-            dataset,
-            results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
-            sizes=sizes,
-            num_runs=1
-        )
+        # #next block is used if Coresets with L1-Lewis Sampling are used (cf. Chapter E.2 in paper)
+        # experiment = L1LewisSamplingExperiment(
+            # dataset,
+            # results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
+            # sizes=sizes,
+            # num_runs=1
+        # )
 
+        # #next block is used if Coresets with L1-Leverage scores are used (cf. Chapter E.1 in paper)
         # experiment = L1LeverageScoreExperiment(
         #     dataset,
         #     results_filename= f"{dataset.get_name()}_l2s" + f"_{rrr}",
@@ -65,6 +66,6 @@ def run_experiments(dataset: Dataset, num_runs, sizes, add=False, ThreePL=False)
         #     num_runs=1,
         #     fast_approx=True
         # )
-
+        
         experiment.run(threePL=ThreePL)
     

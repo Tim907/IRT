@@ -89,6 +89,7 @@ class BaseExperiment(abc.ABC):
             weights = None
             coreset = None
 
+            # Optimizing the persons parameters (Beta in paper)
             t1_start = perf_counter()
 
             if config is not None:
@@ -101,7 +102,6 @@ class BaseExperiment(abc.ABC):
                     X_core = X[coreset, :]
 
             for i in range(n):
-                # for i in range(0):
                 if config is not None:
                     y = X_core[:, i]
                     Z = datasets.make_Z(Beta_core[:, 0:2], y)  # without third column of c's
@@ -125,6 +125,7 @@ class BaseExperiment(abc.ABC):
             t1_stop = perf_counter()
             print("######## Alpha Running time (s):", t1_stop - t1_start)
 
+            # Optimizing the items parameters (Alpha in paper)
             t2_start = perf_counter()
 
             if config is not None:
@@ -151,7 +152,6 @@ class BaseExperiment(abc.ABC):
                 else:
                     opt = optimizer.optimize_2PL(Z, w=weights, bnds=((0, 5), (-6, 6)), theta_init=Beta[i, :])
                 Beta[i, :] = opt.x
-                # print(Beta[i, ])
                 sumCost += opt.fun
 
             t2_stop = perf_counter()
@@ -177,7 +177,8 @@ class BaseExperiment(abc.ABC):
 
         if config is None:
             result_filename = self.results_filename
-            # self.dataset.get_name() #+ f"_M2" #for not overwriting the file in the case of repetition
+            # self.dataset.get_name() #+ f"_M2" 
+            #for not overwriting the file in the case of multiple experiments with the same input, see also datasets.py line 155
         else:
             sizes = config["sizes"]
             result_filename = self.results_filename + f"_{sizes}"
@@ -199,17 +200,18 @@ class BaseExperiment(abc.ABC):
         df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Beta.csv", header=False, index=False)
         # df = pd.DataFrame(X)
         # df.to_csv(settings.RESULTS_DIR / f"{result_filename}_data.csv", header=False, index=False)
-        # TODO I have turned off the saving of Data.csv
+        # If need to save Data.csv, turn on the previous two lines
         runtimes_df.to_csv(settings.RESULTS_DIR / f"{result_filename}_Alpha_Beta_runtime.csv", header=False,
                            index=False)
 
     def run(self, threePL=False):
         X = self.dataset.get_X()
         logger.info("Computing IRT on full dataset...")
-        self.IRT(X, threePL=threePL)
+        self.IRT(X, threePL=threePL) # this line performs experiment on the complete input
 
         logger.info("Running experiments...")
 
+        # the next two blocks perform experiments on coresets
         def job_function(cur_config):
             logger.info(f"Current experimental config: {cur_config}")
             self.IRT(X, threePL=threePL, config=cur_config)
